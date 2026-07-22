@@ -26,10 +26,13 @@ def format_time(ms):
     return f"{minutes} мин {seconds:.3f}".replace('.', ',') + " сек"
 
 def parse_timestamp(ts_ms):
-    """Преобразует timestamp в читаемый формат"""
+    """Преобразует timestamp в читаемый формат (UTC+5)"""
     try:
+        from datetime import datetime, timedelta
         dt = datetime.utcfromtimestamp(int(ts_ms) / 1000)
-        return dt.strftime('%d.%m.%Y %H:%M:%S.%f')[:-3]
+        # Добавляем 5 часов для UTC+5
+        dt_local = dt + timedelta(hours=5)
+        return dt_local.strftime('%d.%m.%Y %H:%M:%S.%f')[:-3]
     except:
         return 'N/A'
 
@@ -38,7 +41,7 @@ def create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file):
     jtl_data = parse_jtl_file(jtl_file)
     
     if not jtl_data:
-        print("❌ Не удалось прочитать данные из JTL файла!")
+        print("Не удалось прочитать данные из JTL файла!")
         return
 
     # Группируем и считаем статистику
@@ -323,8 +326,9 @@ def create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file):
             cell = ws3.cell(row=r_idx, column=col, value=row.get(header, ''))
             cell.border = thin_border
 
+    # Сохраняем
     wb.save(output_file)
-    print(f" Файл '{output_file}' успешно создан!")
+    print(f"Файл '{output_file}' успешно создан!")
     print(f"   Листы: {', '.join(wb.sheetnames)}")
     print(f"   Строк данных: {len(jtl_data)}")
 
