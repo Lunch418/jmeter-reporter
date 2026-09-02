@@ -1,183 +1,268 @@
 #!/usr/bin/env python3
+"""Преобразует результаты нагрузочного тестирования JMeter (.jtl) в Excel-отчёт.
+
+Использование:
+    python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
+    python3 convert.py jmeter.jtl report.xlsx
+    python3 convert.py jmeter.jtl report.xlsx --tz Europe/Moscow
+
+Время в отчёте по умолчанию — локальное время той машины, где запущен скрипт.
+Переопределить: --tz Europe/Moscow | --tz UTC | --tz +05:00 | --tz local
+"""
 import csv
-import statistics
 import os
+import re
 import sys
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, Reference
 
-def parse_jtl_file(jtl_file):
-    data = []
-    with open(jtl_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            data.append(row)
-    return data
+# Лимит строк листа Excel (xlsx). Лист «Исходные данные» обрезается по нему,
+# иначе openpyxl падает на большом JTL уже в момент сохранения.
+EXCEL_MAX_ROWS = 1_048_576
 
-def format_time(ms):
-    """Преобразует миллисекунды в формат 'X мин Y,ZZZ сек'"""
-    total_seconds = ms / 1000.0
-    minutes = int(total_seconds) // 60
-    seconds = total_seconds - (minutes * 60)
-    return f"{minutes} мин {seconds:.3f}".replace('.', ',') + " сек"
 
-def parse_timestamp(ts_ms):
-    """Преобразует timestamp в читаемый формат (UTC+5)"""
+# ---------------------------------------------------------------- время ----
+
+def resolve_timezone(spec):
+    """Часовой пояс для отображения меток времени.
+
+    None или 'local' -> локальный пояс машины (значение по умолчанию).
+    'UTC', 'Europe/Moscow', 'Asia/Yekaterinburg' -> именованный пояс (нужен Python 3.9+).
+    '+05:00', '-03:30', '+5' -> фиксированное смещение, работает на любом Python.
+    """
+    if spec is None or spec.strip().lower() == 'local':
+        return None  # None => datetime.astimezone() возьмёт пояс машины
+
+    spec = spec.strip()
+
+    offset = re.fullmatch(r'(?:UTC|GMT)?([+-])(\d{1,2})(?::?(\d{2}))?', spec, re.IGNORECASE)
+    if offset:
+        sign = 1 if offset.group(1) == '+' else -1
+        delta = timedelta(hours=int(offset.group(2)), minutes=int(offset.group(3) or 0))
+        return timezone(sign * delta)
+
     try:
-        from datetime import datetime, timedelta
-        dt = datetime.utcfromtimestamp(int(ts_ms) / 1000)
-        # Добавляем 5 часов для UTC+5
-        dt_local = dt + timedelta(hours=5)
-        return dt_local.strftime('%d.%m.%Y %H:%M:%S.%f')[:-3]
-    except:
+        from zoneinfo import ZoneInfo
+    except ImportError:
+        sys.exit(
+            f"Именованный часовой пояс '{spec}' требует Python 3.9+.\n"
+            f"На более старой версии укажите смещение явно, например: --tz +03:00"
+        )
+
+    try:
+        return ZoneInfo(spec)
+    except Exception:
+        sys.exit(
+            f"Неизвестный часовой пояс: '{spec}'.\n"
+            f"Ожидается имя вида Europe/Moscow, UTC, либо смещение вида +05:00.\n"
+            f"На Windows именованные пояса требуют пакета tzdata: pip install tzdata"
+        )
+
+
+def to_datetime(ts_ms, tz):
+    """Метка времени JMeter (epoch в миллисекундах) -> datetime в поясе tz."""
+    return datetime.fromtimestamp(int(ts_ms) / 1000, tz=timezone.utc).astimezone(tz)
+
+
+def format_timestamp(ts_ms, tz):
+    """Читаемая метка времени: '21.07.2026 17:31:26.285'."""
+    try:
+        return to_datetime(ts_ms, tz).strftime('%d.%m.%Y %H:%M:%S.%f')[:-3]
+    except (TypeError, ValueError, OSError, OverflowError):
         return 'N/A'
 
-def create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file):
-    # Парсим JTL файл
-    jtl_data = parse_jtl_file(jtl_file)
-    
-    if not jtl_data:
-        print("Не удалось прочитать данные из JTL файла!")
-        return
 
-    # Группируем и считаем статистику
+def timezone_label(ts_ms, tz):
+    """Подпись пояса для шапки отчёта: 'UTC+03:00'.
+
+    Смещение считается на момент самого теста, а не на «сейчас», поэтому
+    отчёт по летнему тесту, открытый зимой, всё равно подпишется правильно.
+    """
+    try:
+        offset = to_datetime(ts_ms, tz).utcoffset()
+    except (TypeError, ValueError, OSError, OverflowError):
+        return 'UTC'
+    if offset is None:
+        return 'UTC'
+    total_minutes = int(offset.total_seconds() // 60)
+    sign = '+' if total_minutes >= 0 else '-'
+    hours, minutes = divmod(abs(total_minutes), 60)
+    return f"UTC{sign}{hours:02d}:{minutes:02d}"
+
+
+def format_duration(ms):
+    """Длительность в формате '4 мин 51,430 сек' (с часами, если тест длинный)."""
+    total_seconds = ms / 1000.0
+    hours = int(total_seconds) // 3600
+    minutes = (int(total_seconds) % 3600) // 60
+    seconds = total_seconds - hours * 3600 - minutes * 60
+    tail = f"{minutes} мин {seconds:.3f}".replace('.', ',') + " сек"
+    return f"{hours} ч {tail}" if hours else tail
+
+
+# ------------------------------------------------------------ разбор JTL ----
+
+def to_int(value, default=0):
+    """int() устойчивый к пустым и нечисловым ячейкам JTL.
+
+    dict.get(key, 0) здесь не спасает: в JTL колонка часто присутствует,
+    но пустая, и .get вернёт '' — int('') падает с ValueError.
+    """
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def parse_jtl_file(jtl_file):
+    with open(jtl_file, 'r', encoding='utf-8', errors='replace', newline='') as f:
+        head = f.read(200)
+        f.seek(0)
+        if head.lstrip().startswith('<'):
+            sys.exit(
+                f"Файл '{jtl_file}' похож на JTL в формате XML, а скрипт читает CSV.\n"
+                f"В JMeter выставьте jmeter.save.saveservice.output_format=csv "
+                f"и перезапустите тест."
+            )
+        return list(csv.DictReader(f))
+
+
+def percentile(sorted_values, fraction):
+    """Перцентиль по формуле JMeter: индекс round(n * p) - 1.
+
+    Медиана здесь — тот же самый вызов с fraction=0.5, а НЕ statistics.median():
+    JMeter берёт один средний элемент, а statistics.median на чётном n
+    усредняет два соседних. На реальных данных это расходится в разы
+    (шаг «01. Home page»: 121 у JMeter против 327 у statistics.median).
+    """
+    n = len(sorted_values)
+    return sorted_values[max(0, round(n * fraction) - 1)]
+
+
+def average(values):
+    """Среднее по формуле JMeter: целочисленное деление, без округления.
+
+    round(mean) даёт +1 мс примерно на половине шагов и расходится
+    с цифрами в standardResults.xml, которые заказчик может сверять.
+    """
+    return sum(values) // len(values) if values else 0
+
+
+def collect_stats(rows):
+    """Агрегаты по одной группе замеров (один label либо весь тест)."""
+    elapsed = sorted(to_int(r.get('elapsed')) for r in rows)
+    starts = [to_int(r.get('timeStamp')) for r in rows]
+    ends = [to_int(r.get('timeStamp')) + to_int(r.get('elapsed')) for r in rows]
+
+    # Длительность = от начала первого замера до КОНЦА последнего.
+    # max(timeStamp) - min(timeStamp) теряет время выполнения последнего
+    # запроса, занижая длительность и завышая throughput.
+    duration_sec = (max(ends) - min(starts)) / 1000.0
+    errors = sum(1 for r in rows if str(r.get('success', '')).strip().upper() != 'TRUE')
+    total_bytes = sum(to_int(r.get('bytes')) for r in rows)
+    total_sent = sum(to_int(r.get('sentBytes')) for r in rows)
+    n = len(rows)
+
+    return {
+        'samples': n,
+        'avg': average(elapsed),
+        'median': percentile(elapsed, 0.50),
+        'p90': percentile(elapsed, 0.90),
+        'p95': percentile(elapsed, 0.95),
+        'p99': percentile(elapsed, 0.99),
+        'min': elapsed[0],
+        'max': elapsed[-1],
+        'error_pct': errors / n * 100 if n else 0,
+        'throughput': n / duration_sec if duration_sec > 0 else 0,
+        'received_kb': total_bytes / 1024 / duration_sec if duration_sec > 0 else 0,
+        'sent_kb': total_sent / 1024 / duration_sec if duration_sec > 0 else 0,
+    }
+
+
+# ---------------------------------------------------------------- отчёт ----
+
+def create_excel_report(jtl_file, output_file, tz=None):
+    jtl_data = parse_jtl_file(jtl_file)
+
+    if not jtl_data:
+        sys.exit(f"Не удалось прочитать данные из JTL файла '{jtl_file}' — файл пуст.")
+
+    missing = {'timeStamp', 'elapsed', 'label'} - set(jtl_data[0].keys())
+    if missing:
+        sys.exit(
+            f"В '{jtl_file}' нет обязательных колонок: {', '.join(sorted(missing))}.\n"
+            f"Найдены: {', '.join(jtl_data[0].keys())}"
+        )
+    if 'success' not in jtl_data[0]:
+        print("Внимание: в JTL нет колонки 'success' — все замеры будут учтены как ошибочные.",
+              file=sys.stderr)
+
+    # Порядок меток — как в JTL, а не по алфавиту: он совпадает с порядком
+    # шагов сценария, и заказчик читает отчёт именно в этом порядке.
     grouped = defaultdict(list)
     for row in jtl_data:
         grouped[row['label']].append(row)
-    
-    stats = []
-    for label, rows in grouped.items():
-        elapsed = [int(r['elapsed']) for r in rows]
-        errors = sum(1 for r in rows if r.get('success', '').upper() != 'TRUE')
-        total_bytes = sum(int(r.get('bytes', 0)) for r in rows)
-        total_sent = sum(int(r.get('sentBytes', 0)) for r in rows)
-        
-        timestamps = [int(r['timeStamp']) for r in rows]
-        duration_sec = (max(timestamps) - min(timestamps)) / 1000.0 if len(timestamps) > 1 else 1.0
-        
-        # НЕ округляем - сохраняем полную точность!
-        throughput = len(rows) / duration_sec if duration_sec > 0 else 0
-        received_kb = total_bytes / 1024 / duration_sec if duration_sec > 0 else 0
-        sent_kb = total_sent / 1024 / duration_sec if duration_sec > 0 else 0
-        error_pct = errors / len(rows) * 100 if len(rows) > 0 else 0
-        
-        sorted_elapsed = sorted(elapsed)
-        n = len(sorted_elapsed)
-        
-        # Правильная формула для перцентилей: round(n * p) - 1
-        p90_idx = max(0, round(n * 0.90) - 1)
-        p95_idx = max(0, round(n * 0.95) - 1)
-        p99_idx = max(0, round(n * 0.99) - 1)
-        
-        stats.append({
-            'label': label,
-            'samples': n,
-            'avg': round(statistics.mean(elapsed)),
-            'median': round(statistics.median(elapsed)),
-            'p90': sorted_elapsed[p90_idx],
-            'p95': sorted_elapsed[p95_idx],
-            'p99': sorted_elapsed[p99_idx],
-            'min': min(elapsed),
-            'max': max(elapsed),
-            'error_pct': error_pct,  # Полная точность
-            'throughput': throughput,  # Полная точность
-            'received_kb': received_kb,  # Полная точность
-            'sent_kb': sent_kb,  # Полная точность
-        })
 
-    # НЕ сортируем - сохраняем порядок из JTL файла
-    stats_sorted = stats
+    stats = [dict(collect_stats(rows), label=label) for label, rows in grouped.items()]
+    total_stats = collect_stats(jtl_data)
 
-    # Общая статистика
-    all_elapsed = [int(r['elapsed']) for r in jtl_data]
-    total_errors = sum(1 for r in jtl_data if r.get('success', '').upper() != 'TRUE')
-    all_timestamps = [int(r['timeStamp']) for r in jtl_data]
-    duration_ms = max(all_timestamps) - min(all_timestamps)
-    
-    start_time = parse_timestamp(all_timestamps[0])
-    end_time = parse_timestamp(all_timestamps[-1])
-    duration_str = format_time(duration_ms)
+    # min/max, а не первая и последняя строка файла: JMeter пишет строки
+    # в порядке ЗАВЕРШЕНИЯ замеров, поэтому при нескольких потоках последняя
+    # строка почти никогда не является самой поздней по времени.
+    all_starts = [to_int(r.get('timeStamp')) for r in jtl_data]
+    all_ends = [to_int(r.get('timeStamp')) + to_int(r.get('elapsed')) for r in jtl_data]
+    first_ts, last_ts = min(all_starts), max(all_ends)
 
-    # Создаем Excel файл
+    tz_label = timezone_label(first_ts, tz)
+    start_time = format_timestamp(first_ts, tz)
+    end_time = format_timestamp(last_ts, tz)
+    duration_str = format_duration(last_ts - first_ts)
+
     wb = Workbook()
-    
-    # Стили - как в примере
+
     header_font_bold_11 = Font(bold=True, size=11)
     header_font_bold_16 = Font(bold=True, size=16)
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'),
                          top=Side(style='thin'), bottom=Side(style='thin'))
-    header_fill_blue = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')  # Темный синий
+    header_fill_blue = PatternFill(start_color='1F4E78', end_color='1F4E78', fill_type='solid')
     header_font_white = Font(bold=True, size=11, color='FFFFFF')
-    label_fill = PatternFill(start_color='DDEBF7', end_color='DDEBF7', fill_type='solid')  # Светло-голубой
-    value_fill = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')  # Белый
-    total_fill = PatternFill(start_color='E2F0D9', end_color='E2F0D9', fill_type='solid')  # Светло-зеленый
+    label_fill = PatternFill(start_color='DDEBF7', end_color='DDEBF7', fill_type='solid')
+    value_fill = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
+    total_fill = PatternFill(start_color='E2F0D9', end_color='E2F0D9', fill_type='solid')
 
     # ================= ЛИСТ 1: СВОДКА =================
     ws1 = wb.active
     ws1.title = 'Сводка'
-    
-    # Заголовок (строка 1)
+
     ws1['A1'] = 'Отчет по результатам нагрузочного тестирования'
     ws1['A1'].font = header_font_bold_16
     ws1.merge_cells('A1:E1')
-    
-    # Пустая строка 2
-    
-    # Информация о тесте (строки 3-5)
-    # Строка 3
-    ws1['A3'] = 'Файл JTL'
-    ws1['A3'].font = header_font_bold_11
-    ws1['A3'].fill = label_fill
-    ws1['B3'] = os.path.basename(jtl_file)
-    ws1['B3'].font = header_font_bold_11
-    ws1['B3'].fill = value_fill
-    
-    ws1['D3'] = 'Начало тестирования (UTC+5)'
-    ws1['D3'].font = header_font_bold_11
-    ws1['D3'].fill = label_fill
-    ws1['E3'] = start_time
-    ws1['E3'].font = header_font_bold_11
-    ws1['E3'].fill = value_fill
-    
-    # Строка 4
-    ws1['A4'] = 'Всего выборок'
-    ws1['A4'].font = header_font_bold_11
-    ws1['A4'].fill = label_fill
-    ws1['B4'] = len(jtl_data)
-    ws1['B4'].font = header_font_bold_11
-    ws1['B4'].fill = value_fill
-    
-    ws1['D4'] = 'Окончание тестирования (UTC+5)'
-    ws1['D4'].font = header_font_bold_11
-    ws1['D4'].fill = label_fill
-    ws1['E4'] = end_time
-    ws1['E4'].font = header_font_bold_11
-    ws1['E4'].fill = value_fill
-    
-    # Строка 5
-    ws1['A5'] = 'Ошибок'
-    ws1['A5'].font = header_font_bold_11
-    ws1['A5'].fill = label_fill
-    ws1['B5'] = total_errors
-    ws1['B5'].font = header_font_bold_11
-    ws1['B5'].fill = value_fill
-    
-    ws1['D5'] = 'Длительность'
-    ws1['D5'].font = header_font_bold_11
-    ws1['D5'].fill = label_fill
-    ws1['E5'] = duration_str
-    ws1['E5'].font = header_font_bold_11
-    ws1['E5'].fill = value_fill
-    
-    # Пустая строка 6
-    
-    # Заголовки таблицы (строка 7)
-    headers = ['Label', '# Samples', 'Average', 'Median', '90% Line', '95% Line', '99% Line', 'Min', 'Max', 'Error %', 'Throughput', 'Received KB/sec', 'Sent KB/sec']
-    
+
+    summary_rows = [
+        (3, 'Файл JTL', os.path.basename(jtl_file), f'Начало тестирования ({tz_label})', start_time),
+        (4, 'Всего выборок', len(jtl_data), f'Окончание тестирования ({tz_label})', end_time),
+        (5, 'Ошибок', sum(1 for r in jtl_data
+                          if str(r.get('success', '')).strip().upper() != 'TRUE'),
+         'Длительность', duration_str),
+    ]
+    for row, left_label, left_value, right_label, right_value in summary_rows:
+        for column, value, fill in (
+            ('A', left_label, label_fill), ('B', left_value, value_fill),
+            ('D', right_label, label_fill), ('E', right_value, value_fill),
+        ):
+            cell = ws1[f'{column}{row}']
+            cell.value = value
+            cell.font = header_font_bold_11
+            cell.fill = fill
+
+    headers = ['Label', '# Samples', 'Average', 'Median', '90% Line', '95% Line', '99% Line',
+               'Min', 'Max', 'Error %', 'Throughput', 'Received KB/sec', 'Sent KB/sec']
+
     for col, header in enumerate(headers, 1):
         cell = ws1.cell(row=7, column=col, value=header)
         cell.font = header_font_white
@@ -185,71 +270,30 @@ def create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file):
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-    # Данные (строка 8+)
+    def stat_values(s):
+        return [s['label'], s['samples'], s['avg'], s['median'], s['p90'], s['p95'], s['p99'],
+                s['min'], s['max'], s['error_pct'], s['throughput'], s['received_kb'], s['sent_kb']]
+
     row_idx = 8
-    for s in stats_sorted:
-        values = [
-            s['label'], s['samples'], s['avg'], s['median'],
-            s['p90'], s['p95'], s['p99'],
-            s['min'], s['max'], s['error_pct'],
-            s['throughput'], s['received_kb'], s['sent_kb']
-        ]
-        for col, val in enumerate(values, 1):
+    for s in stats:
+        for col, val in enumerate(stat_values(s), 1):
             cell = ws1.cell(row=row_idx, column=col, value=val)
             cell.border = thin_border
-            if col > 1:
-                cell.alignment = Alignment(horizontal='right')
-            else:
-                cell.alignment = Alignment(horizontal='left')
-            # Форматирование чисел с 3 знаками после запятой для колонок 10-13
+            cell.alignment = Alignment(horizontal='left' if col == 1 else 'right')
             if col >= 10:
                 cell.number_format = '0.000'
         row_idx += 1
 
-    # Итоговая строка TOTAL (полная точность)
-    total_duration_sec = duration_ms / 1000.0 if duration_ms > 0 else 1.0
-    total_throughput = len(jtl_data) / total_duration_sec if total_duration_sec > 0 else 0
-    total_received_kb = sum(int(r.get('bytes', 0)) for r in jtl_data) / 1024 / total_duration_sec if total_duration_sec > 0 else 0
-    total_sent_kb = sum(int(r.get('sentBytes', 0)) for r in jtl_data) / 1024 / total_duration_sec if total_duration_sec > 0 else 0
-    total_error_pct = total_errors / len(jtl_data) * 100 if len(jtl_data) > 0 else 0
-    
-    # Правильный расчет перцентилей для TOTAL
-    sorted_all = sorted(all_elapsed)
-    total_n = len(sorted_all)
-    total_p90_idx = max(0, round(total_n * 0.90) - 1)
-    total_p95_idx = max(0, round(total_n * 0.95) - 1)
-    total_p99_idx = max(0, round(total_n * 0.99) - 1)
-    
-    total_values = [
-        'TOTAL', len(jtl_data),
-        round(statistics.mean(all_elapsed)),
-        round(statistics.median(all_elapsed)),
-        sorted_all[total_p90_idx],
-        sorted_all[total_p95_idx],
-        sorted_all[total_p99_idx],
-        min(all_elapsed), max(all_elapsed),
-        total_error_pct,  # Полная точность
-        total_throughput,  # Полная точность
-        total_received_kb,  # Полная точность
-        total_sent_kb  # Полная точность
-    ]
-    
-    for col, val in enumerate(total_values, 1):
+    for col, val in enumerate(stat_values(dict(total_stats, label='TOTAL')), 1):
         cell = ws1.cell(row=row_idx, column=col, value=val)
         cell.font = header_font_bold_11
         cell.fill = total_fill
         cell.border = thin_border
-        if col > 1:
-            cell.alignment = Alignment(horizontal='right')
-        else:
-            cell.alignment = Alignment(horizontal='left')
-        # Форматирование для колонок 10-13
+        cell.alignment = Alignment(horizontal='left' if col == 1 else 'right')
         if col >= 10:
             cell.number_format = '0.000'
 
-    # Автоширина колонок
-    col_widths = [30, 12, 12, 12, 12, 12, 12, 10, 10, 12, 15, 18, 15]
-    for col, width in enumerate(col_widths, 1):
+    for col, width in enumerate([30, 12, 12, 12, 12, 12, 12, 10, 10, 12, 15, 18, 15], 1):
         ws1.column_dimensions[get_column_letter(col)].width = width
 
     # ================= ЛИСТ 2: ГРАФИК ВРЕМЕНИ =================
@@ -257,59 +301,64 @@ def create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file):
     ws2['A1'] = 'Агрегированный график времени выполнения шагов'
     ws2['A1'].font = header_font_bold_16
     ws2.merge_cells('A1:J1')
-    
-    # Пустая строка 2
-    graph_headers = ['Label', '# Samples', 'Average', 'Median', '90% Line', '95% Line', '99% Line', 'Min', 'Max', 'Error %']
+
+    graph_headers = ['Label', '# Samples', 'Average', 'Median', '90% Line', '95% Line',
+                     '99% Line', 'Min', 'Max', 'Error %']
+    HEADER_ROW = 3
+    FIRST_DATA_ROW = HEADER_ROW + 1
+
     for col, header in enumerate(graph_headers, 1):
-        cell = ws2.cell(row=3, column=col, value=header)
+        cell = ws2.cell(row=HEADER_ROW, column=col, value=header)
         cell.font = header_font_white
         cell.fill = header_fill_blue
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
-    
-    # Только основные шаги (01. - 10.)
-    main_steps = [s for s in stats_sorted if any(s['label'].startswith(f"{i:02d}.") for i in range(1, 11))]
-    
-    r_idx = 4
+
+    # Любой шаг вида 'NN. ...', а не жёстко 01–10: одиннадцатый шаг
+    # раньше молча исчезал и из таблицы, и из диаграммы.
+    step_pattern = re.compile(r'^\d{2}\.')
+    main_steps = [s for s in stats if step_pattern.match(s['label'])]
+
+    r_idx = FIRST_DATA_ROW
     for s in main_steps:
-        values = [s['label'], s['samples'], s['avg'], s['median'], s['p90'], s['p95'], s['p99'], s['min'], s['max'], s['error_pct']]
+        values = [s['label'], s['samples'], s['avg'], s['median'], s['p90'],
+                  s['p95'], s['p99'], s['min'], s['max'], s['error_pct']]
         for col, val in enumerate(values, 1):
             cell = ws2.cell(row=r_idx, column=col, value=val)
             cell.border = thin_border
-            if col > 1:
-                cell.alignment = Alignment(horizontal='right')
-            else:
-                cell.alignment = Alignment(horizontal='left')
-            # Форматирование для колонки Error %
+            cell.alignment = Alignment(horizontal='left' if col == 1 else 'right')
             if col == 10:
                 cell.number_format = '0.000'
         r_idx += 1
-    
-    # Добавляем горизонтальную диаграмму с Average и 90% Line
-    chart1 = BarChart()
-    chart1.type = "bar"  # Горизонтальная диаграмма
-    chart1.style = 10
-    chart1.title = "Время выполнения шагов (мс)"
-    chart1.x_axis.title = 'Время, мс'
-    chart1.y_axis.title = 'Шаги'
-    
-    # Average (колонка 3)
-    data_avg = Reference(ws2, min_col=3, min_row=3, max_row=2+len(main_steps))
-    # 90% Line (колонка 5)
-    data_p90 = Reference(ws2, min_col=5, min_row=3, max_row=2+len(main_steps))
-    # Категории (шаги)
-    cats = Reference(ws2, min_col=1, min_row=4, max_row=3+len(main_steps))
-    
-    chart1.add_data(data_avg, titles_from_data=True)
-    chart1.add_data(data_p90, titles_from_data=True)
-    chart1.set_categories(cats)
-    chart1.height = 12
-    chart1.width = 20
-    ws2.add_chart(chart1, "A" + str(r_idx + 2))
-    
+
+    if main_steps:
+        last_data_row = FIRST_DATA_ROW + len(main_steps) - 1
+
+        chart = BarChart()
+        chart.type = "bar"
+        chart.style = 10
+        chart.title = "Время выполнения шагов (мс)"
+        chart.x_axis.title = 'Время, мс'
+        chart.y_axis.title = 'Шаги'
+
+        # Ряды берутся с HEADER_ROW (titles_from_data=True) по last_data_row.
+        # Раньше верхняя граница считалась как 2 + len(main_steps), то есть
+        # на строку меньше, и последний шаг («10. Выход из системы») просто
+        # не попадал в диаграмму, а подписи категорий уезжали на шаг.
+        chart.add_data(Reference(ws2, min_col=3, min_row=HEADER_ROW, max_row=last_data_row),
+                       titles_from_data=True)
+        chart.add_data(Reference(ws2, min_col=5, min_row=HEADER_ROW, max_row=last_data_row),
+                       titles_from_data=True)
+        chart.set_categories(Reference(ws2, min_col=1, min_row=FIRST_DATA_ROW,
+                                       max_row=last_data_row))
+        chart.height = 12
+        chart.width = 20
+        ws2.add_chart(chart, "A" + str(r_idx + 2))
+
     for col in range(1, len(graph_headers) + 1):
-        max_length = max(len(str(ws2.cell(row=r, column=col).value or '')) for r in range(1, r_idx))
-        ws2.column_dimensions[get_column_letter(col)].width = min(max_length + 2, 30)
+        lengths = [len(str(ws2.cell(row=r, column=col).value or ''))
+                   for r in range(HEADER_ROW, r_idx)]
+        ws2.column_dimensions[get_column_letter(col)].width = min(max(lengths or [8]) + 2, 30)
 
     # ================= ЛИСТ 3: ИСХОДНЫЕ ДАННЫЕ =================
     ws3 = wb.create_sheet('Исходные данные')
@@ -320,26 +369,84 @@ def create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file):
         cell.fill = header_fill_blue
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
-    
-    for r_idx, row in enumerate(jtl_data, start=2):
+
+    numeric_columns = {'timeStamp', 'elapsed', 'bytes', 'sentBytes', 'grpThreads',
+                       'allThreads', 'Latency', 'IdleTime', 'Connect'}
+    raw_limit = EXCEL_MAX_ROWS - 1
+    truncated = len(jtl_data) - raw_limit
+
+    for r_idx, row in enumerate(jtl_data[:raw_limit], start=2):
         for col, header in enumerate(raw_headers, 1):
-            cell = ws3.cell(row=r_idx, column=col, value=row.get(header, ''))
+            value = row.get(header, '')
+            # Числа записываются числами, иначе Excel показывает их как текст
+            # и по ним нельзя ни отсортировать, ни построить формулу.
+            if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
+                value = int(value)
+            cell = ws3.cell(row=r_idx, column=col, value=value)
             cell.border = thin_border
 
-    # Сохраняем
+    if truncated > 0:
+        print(f"Внимание: лист «Исходные данные» обрезан — {truncated} строк "
+              f"не поместились в лимит Excel ({EXCEL_MAX_ROWS} строк).", file=sys.stderr)
+
     wb.save(output_file)
     print(f"Файл '{output_file}' успешно создан!")
     print(f"   Листы: {', '.join(wb.sheetnames)}")
     print(f"   Строк данных: {len(jtl_data)}")
+    print(f"   Время в отчёте: {tz_label}")
+
+
+# ------------------------------------------------------------------ CLI ----
+
+USAGE = (
+    "Использование:\n"
+    "  python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx\n"
+    "  python3 convert.py jmeter.jtl report.xlsx\n"
+    "\n"
+    "Опции:\n"
+    "  --tz ПОЯС   Часовой пояс для меток времени в отчёте.\n"
+    "              По умолчанию — локальное время машины.\n"
+    "              Примеры: --tz Europe/Moscow, --tz UTC, --tz +05:00\n"
+)
+
+
+def parse_args(argv):
+    tz_spec = None
+    positional = []
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in ('-h', '--help'):
+            print(USAGE)
+            sys.exit(0)
+        elif arg == '--tz':
+            if i + 1 >= len(argv):
+                sys.exit("Ошибка: у --tz не указано значение.\n\n" + USAGE)
+            tz_spec = argv[i + 1]
+            i += 2
+        elif arg.startswith('--tz='):
+            tz_spec = arg[len('--tz='):]
+            i += 1
+        else:
+            positional.append(arg)
+            i += 1
+
+    # Поддерживаются обе формы вызова: короткая и историческая четырёхаргументная.
+    # dashBoard_jmeter.xml и standardResults.xml скриптом не используются —
+    # все цифры отчёта считаются из JTL, — но команда из README продолжает работать.
+    if len(positional) == 2:
+        jtl_file, output_file = positional
+    elif len(positional) == 4:
+        jtl_file, _dashboard_xml, _standard_xml, output_file = positional
+    else:
+        sys.exit(USAGE)
+
+    if not os.path.isfile(jtl_file):
+        sys.exit(f"Файл не найден: '{jtl_file}'")
+
+    return jtl_file, output_file, resolve_timezone(tz_spec)
+
 
 if __name__ == '__main__':
-    if len(sys.argv) < 5:
-        print("Использование: python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx")
-        sys.exit(1)
-    
-    jtl_file = sys.argv[1]
-    dashboard_xml = sys.argv[2]
-    standard_xml = sys.argv[3]
-    output_file = sys.argv[4]
-    
-    create_excel_report(jtl_file, dashboard_xml, standard_xml, output_file)
+    jtl_path, output_path, timezone_obj = parse_args(sys.argv[1:])
+    create_excel_report(jtl_path, output_path, tz=timezone_obj)
