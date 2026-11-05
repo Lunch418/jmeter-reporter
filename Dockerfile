@@ -2,7 +2,7 @@
 
 # ---- base: runtime dependencies only ----
 # Pinned by digest: the build does not change under our feet. Dependabot bumps it.
-FROM python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS base
+FROM python:3.15-slim@sha256:8c13a3f37a6a5b71498228e902c4b9f51c1f7900d49fabf71f9a650c6120e0d0 AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     TERM=xterm-256color \
