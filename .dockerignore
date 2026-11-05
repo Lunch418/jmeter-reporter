@@ -10,3 +10,4 @@ data
 *.xlsx
 Dockerfile
 docker-compose.yml
+reports

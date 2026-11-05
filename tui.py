@@ -7,6 +7,7 @@
 Keys: Ctrl+R build, Ctrl+O files, Ctrl+U folder up, Ctrl+B open folder,
 Ctrl+F file type, Tab next field, Ctrl+Q quit.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -56,10 +57,28 @@ TIMEZONES = [
 ]
 
 
+SAMPLES_DIR = Path(__file__).resolve().parent / 'samples'
+REPORTS_DIR_NAME = 'reports'
+
+
 def default_output_path(jtl_path):
-    """Next to the input: results.jtl -> results_report.xlsx."""
+    """Where the report goes by default.
+
+    Next to the input (results.jtl -> results_report.xlsx), except two cases where
+    that would be a bad place: the bundled demo data (it would litter the project)
+    and a folder we cannot write to (e.g. a read-only mount). Those go to
+    ./reports/ in the current directory.
+    """
     jtl_path = Path(jtl_path)
-    return jtl_path.with_name(f'{jtl_path.stem}_report.xlsx')
+    name = f'{jtl_path.stem}_report.xlsx'
+    folder = jtl_path.parent
+    try:
+        is_demo = folder.resolve() == SAMPLES_DIR
+    except OSError:
+        is_demo = False
+    if is_demo or not (folder.is_dir() and os.access(folder, os.W_OK)):
+        return Path.cwd() / REPORTS_DIR_NAME / name
+    return folder / name
 
 
 def classify_xml(path):
@@ -86,6 +105,15 @@ def find_xml_artifacts(jtl_path):
     return standard, dashboard
 
 
+CLUTTER_DIRS = {'__pycache__', 'node_modules', 'venv', 'site-packages', '.venv'}
+
+
+def is_clutter(path):
+    """Service folders nobody wants to browse: caches, virtualenvs, packaging leftovers."""
+    name = path.name
+    return name in CLUTTER_DIRS or name.endswith('.egg-info')
+
+
 class FileTree(DirectoryTree):
     """Directory tree: hidden files are skipped, files are filtered by type."""
 
@@ -99,7 +127,7 @@ class FileTree(DirectoryTree):
     def filter_paths(self, paths):
         result = []
         for path in paths:
-            if path.name.startswith('.'):
+            if path.name.startswith('.') or is_clutter(path):
                 continue
             if path.is_dir() or self.extensions is None \
                     or path.suffix.lower() in self.extensions:
@@ -145,8 +173,7 @@ class ReportApp(App):
     FileTree:focus > .tree--cursor {{ background: {ACCENT} 45%; text-style: bold; }}
 
     .row {{ height: 1; }}
-    .key {{ width: 7; color: {DIM}; }}
-    .note {{ width: 12; min-width: 12; padding-left: 1; color: {DIM}; }}
+    .key {{ width: 8; color: {DIM}; }}
     Input {{ border: none; height: 1; padding: 0 1; background: $surface-lighten-1; }}
     Input:focus {{ border: none; background: $surface-lighten-2; }}
     Input > .input--placeholder {{ color: {DIM}; }}
@@ -189,13 +216,11 @@ class ReportApp(App):
                         yield Static('excel', classes='key')
                         yield Input(placeholder='report.xlsx', id='output')
                     with Horizontal(classes='row'):
-                        yield Static('std', classes='key')
+                        yield Static('std', id='standard-key', classes='key')
                         yield Input(placeholder='standardResults.xml', id='standard')
-                        yield Static('', id='standard-note', classes='note')
                     with Horizontal(classes='row'):
-                        yield Static('dash', classes='key')
+                        yield Static('dash', id='dashboard-key', classes='key')
                         yield Input(placeholder='dashBoard_jmeter.xml', id='dashboard')
-                        yield Static('', id='dashboard-note', classes='note')
                     with Horizontal(classes='row'):
                         yield Static('tz', classes='key')
                         yield Select(TIMEZONES, value='local', allow_blank=False, id='tz')
@@ -338,15 +363,16 @@ class ReportApp(App):
     # ----------------------------------------------------------- actions ----
 
     def _refresh_notes(self):
-        for name in ('standard', 'dashboard'):
+        """Mark the std/dash labels: '+' found (green), '!' not found (red), '-' not used."""
+        for name, title in (('standard', 'std'), ('dashboard', 'dash')):
             value = self.query_one(f'#{name}', Input).value.strip()
-            note = self.query_one(f'#{name}-note', Static)
+            key = self.query_one(f'#{name}-key', Static)
             if not value:
-                note.update(Text('без сверки', style=DIM))
+                key.update(Text(f'{title} -', style=DIM))
             elif Path(value).expanduser().is_file():
-                note.update(Text('найден', style=OK))
+                key.update(Text(f'{title} +', style=OK))
             else:
-                note.update(Text('не найден', style=ERR))
+                key.update(Text(f'{title} !', style=ERR))
 
     def action_focus_files(self):
         self.query_one(FileTree).focus()
@@ -399,6 +425,12 @@ class ReportApp(App):
             tz = convert.resolve_timezone(str(tz_value))
         except convert.ReportError as exc:
             self.headline(str(exc).splitlines()[0], ERR)
+            return
+
+        try:
+            Path(output).expanduser().parent.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            self.headline(f'Не удалось создать папку для отчета: {exc}', ERR)
             return
 
         self.headline('Строю отчет...', ACCENT)

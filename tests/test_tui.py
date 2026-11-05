@@ -15,8 +15,10 @@ def log_text(app):
     return '\n'.join(str(line.text) for line in app.query_one('#log', RichLog).lines)
 
 
-def test_default_output_path():
-    assert tui.default_output_path('/a/b/run.jtl') == Path('/a/b/run_report.xlsx')
+def test_default_output_path_for_missing_folder_falls_back(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert tui.default_output_path('/no/such/dir/run.jtl') == \
+        tmp_path / 'reports' / 'run_report.xlsx'
 
 
 def _tree_names(app):
@@ -154,7 +156,7 @@ def test_selecting_jtl_autodetects_xml_and_builds_with_check(tmp_path, sample_jt
             await pilot.pause()
             assert app.query_one('#standard', Input).value.endswith('standardResults.xml')
             assert app.query_one('#dashboard', Input).value.endswith('dashBoard_jmeter.xml')
-            assert 'найден' in str(app.query_one('#standard-note', Static).render())
+            assert 'std +' in str(app.query_one('#standard-key', Static).render())
             app.query_one('#output', Input).value = str(out)
             app.action_build()
             for _ in range(100):
@@ -314,3 +316,82 @@ def test_open_highlighted_folder(tmp_path):
             assert app.start_dir == child.resolve()
 
     run(scenario())
+
+
+# ------------------------------------------------ small UX fixes (v3) ----
+
+def test_default_output_is_next_to_input(tmp_path):
+    assert tui.default_output_path(tmp_path / 'run.jtl') == tmp_path / 'run_report.xlsx'
+
+
+def test_default_output_for_demo_samples_goes_to_reports(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    out = tui.default_output_path(tui.SAMPLES_DIR / 'jmeter.jtl')
+    assert out == tmp_path / 'reports' / 'jmeter_report.xlsx'
+
+
+def test_default_output_for_readonly_folder_goes_to_reports(tmp_path, monkeypatch):
+    ro = tmp_path / 'ro'
+    ro.mkdir()
+    work = tmp_path / 'work'
+    work.mkdir()
+    monkeypatch.chdir(work)
+    monkeypatch.setattr(tui.os, 'access', lambda path, mode: False)
+    assert tui.default_output_path(ro / 'x.jtl') == work / 'reports' / 'x_report.xlsx'
+
+
+def test_clutter_folders_are_hidden_in_both_modes(tmp_path):
+    for name in ('__pycache__', 'node_modules', 'venv', 'pkg.egg-info', 'real'):
+        (tmp_path / name).mkdir()
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert _tree_names(app) == {'real'}
+            app.action_toggle_filter()
+            await pilot.pause()
+            await pilot.pause()
+            assert _tree_names(app) == {'real'}
+
+    run(scenario())
+
+
+def test_xml_status_marks(tmp_path, sample_xml):
+    std, _ = sample_xml
+
+    def key(app, name):
+        return str(app.query_one(f'#{name}-key', Static).render())
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert key(app, 'standard') == 'std -'
+            app.query_one('#standard', Input).value = str(std)
+            await pilot.pause()
+            assert key(app, 'standard') == 'std +'
+            app.query_one('#standard', Input).value = str(tmp_path / 'missing.xml')
+            await pilot.pause()
+            assert key(app, 'standard') == 'std !'
+
+    run(scenario())
+
+
+def test_build_creates_missing_reports_folder(tmp_path, sample_jtl):
+    out = tmp_path / 'new' / 'deep' / 'r.xlsx'
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(out)
+            app.action_build()
+            for _ in range(100):
+                await pilot.pause(0.05)
+                if 'Готово' in log_text(app):
+                    break
+            assert 'Готово' in log_text(app)
+
+    run(scenario())
+    assert out.exists()
