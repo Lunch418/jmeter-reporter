@@ -3,7 +3,7 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
-## [Unreleased]
+## [2.0.0] - 2026-11-05
 
 ### Breaking
 - The Excel report no longer has the 'Сверка' sheet (it was not meant for the customer). The
@@ -13,12 +13,17 @@ The Excel report is covered by a golden test: it does not change between version
   for Russian time zones is gone, named zones use the system zoneinfo database).
 - Names that `convert.py` used to re-export (`ReportError`, `to_int`, `percentile`,
   `resolve_timezone`, ...) now live in their own modules (`errors`, `jtl`, `stats`,
-  `timeutil`, `safety`). The old names still work, raise `DeprecationWarning` and will be
-  removed in 2.0.
+  `timeutil`, `safety`). The deprecated aliases on `convert` are removed: import from the
+  new modules.
 - The 1.2.0 move into the `jmeter_reporter` package changed import paths; it should have been
   announced as breaking.
 
 ### Added
+- The TUI sets the terminal window/tab title like Claude Code: the file name while choosing
+  and a status while building (`[..]` building, `[ok]` done, `[!]` error or SLA failed). The
+  previous title is restored on exit.
+- Offline bundles are built per Python version (`jmeter-report-<ver>-offline-pyXY.zip`,
+  3.10-3.13) because wheel versions differ between interpreters; `tomli` is always included.
 - `samples/jmeter-5.6.3/`: a reference run from a real JMeter 5.6.3 (odd sample counts) with
   expected values produced by JMeter's own `StatCalculator` and its HTML dashboard;
   `tests/test_jmeter_reference.py` checks all numbers against it. (The dashboard computes

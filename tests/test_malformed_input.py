@@ -299,11 +299,9 @@ def test_history_archive_happens_only_after_a_successful_build(tmp_path, sample_
     assert len(info['archived']) == 1 and out.exists()
 
 
-def test_old_convert_names_still_work_but_warn():
-    with pytest.warns(DeprecationWarning, match='removed in 2.0'):
-        assert convert.to_int('7') == 7
-    with pytest.warns(DeprecationWarning):
-        assert convert.ReportError is ReportError
+def test_old_convert_reexports_are_gone():
+    for name in ('to_int', 'ReportError', 'percentile', 'resolve_timezone'):
+        assert not hasattr(convert, name)
 
 
 # ---- raw sheet: cut cells, incompatible openpyxl, temp files, archive order -----------------

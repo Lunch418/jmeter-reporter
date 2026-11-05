@@ -27,41 +27,6 @@ EXCEL_MAX_ROWS = 1_048_576
 DEFAULT_STEP_PATTERN = stats_module.DEFAULT_STEP_PATTERN
 
 
-# --- Устаревшие имена (до 2.0) -------------------------------------------------------------
-# Раньше convert.py был «всем сразу» и реэкспортировал функции из других модулей. Теперь
-# импортируйте их напрямую (from jmeter_reporter.jtl import to_int и т.д.). Старые имена
-# работают, но выдают DeprecationWarning, и будут удалены в 2.0.
-_DEPRECATED = {
-    'ReportError': ('errors', 'ReportError'),
-    'to_int': ('jtl', 'to_int'),
-    'iter_jtl_rows': ('jtl', 'iter_jtl_rows'),
-    'parse_jtl_file': ('jtl', 'parse_jtl_file'),
-    'JTL_ENCODING': ('jtl', 'JTL_ENCODING'),
-    'csv_safe': ('safety', 'csv_safe'),
-    'neutralize_formulas': ('safety', 'neutralize_formulas'),
-    'FORMULA_TRIGGERS': ('safety', 'FORMULA_TRIGGERS'),
-    'percentile': ('stats', 'percentile'),
-    'average': ('stats', 'average'),
-    'collect_stats': ('stats', 'stats_of_rows'),
-    'resolve_timezone': ('timeutil', 'resolve_timezone'),
-    'format_timestamp': ('timeutil', 'format_timestamp'),
-    'format_duration': ('timeutil', 'format_duration'),
-    'timezone_label': ('timeutil', 'timezone_label'),
-    'to_datetime': ('timeutil', 'to_datetime'),
-}
-
-
-def __getattr__(name):
-    if name in _DEPRECATED:
-        import importlib
-        import warnings
-        module, real = _DEPRECATED[name]
-        warnings.warn(f"convert.{name} is deprecated and will be removed in 2.0; "
-                      f"use jmeter_reporter.{module}.{real}", DeprecationWarning, stacklevel=2)
-        return getattr(importlib.import_module(f'.{module}', __package__), real)
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
-
-
 # ---------------------------------------------------------------- отчёт ----
 
 def _import_openpyxl():

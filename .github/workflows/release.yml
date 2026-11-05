@@ -25,7 +25,10 @@ jobs:
       - name: Breaking changes need a new major version
         run: python tools/changelog_section.py --check "${GITHUB_REF_NAME}"
       - name: Build offline bundle
-        run: python tools/make_offline_bundle.py --with-tui
+        run: |
+          for v in 3.10 3.11 3.12 3.13; do
+            python tools/make_offline_bundle.py --with-tui --python-version "$v"
+          done
       - name: Release notes
         run: python tools/changelog_section.py "${GITHUB_REF_NAME}" > notes.md
       - name: Publish

@@ -263,7 +263,8 @@ error_pct = 1.0
 ## Закрытый контур (без интернета)
 
 Программа не обращается к сети. Три способа доставки: пакет с колесами
-(`python tools/make_offline_bundle.py --with-tui`, потом `pip install --no-index
+(`python tools/make_offline_bundle.py --with-tui --python-version 3.10`, один пакет на версию
+Python; готовые лежат в Releases; потом `pip install --no-index
 --find-links wheels -r requirements-tui.txt`), Docker-образ через `docker save` / `docker load`
 или вообще без пакетов: `cli.py check`, `export` и `compare` работают на одном Python.
 Подробности: [docs/OFFLINE.md](docs/OFFLINE.md).

@@ -295,6 +295,8 @@ class ReportApp(App):
         return text
 
     def on_mount(self):
+        self._write_terminal('\x1b[22;0t')  # remember the shell's title, restored on exit
+        self.set_window_title()
         self.register_theme(THEME)
         self.theme = 'claude-report'
         self.query_one('#files-panel').border_title = self._files_title(FILE_TYPES['jmeter'][0])
@@ -307,6 +309,33 @@ class ReportApp(App):
         self._refresh_notes()
         self._load_config()
         self.say('Выберите .jtl в дереве (Enter) и нажмите Ctrl+R.', DIM)
+
+    # ------------------------------------------------- terminal window title ----
+    # Like Claude Code: the tab / window title shows what the program is doing, so a build
+    # running in a background tab is visible. ASCII markers on purpose (house style).
+
+    APP_NAME = 'JMeter -> Excel'
+
+    def _write_terminal(self, data):
+        """Raw bytes to the real terminal (tests replace this method)."""
+        driver = getattr(self, '_driver', None)
+        if driver is None:
+            return
+        try:
+            driver.write(data)
+            driver.flush()
+        except Exception:  # the title is decoration: it must never break the program
+            pass
+
+    def set_window_title(self, text=''):
+        clean = ''.join(ch for ch in str(text) if ch.isprintable())[:80]
+        title = f'{clean} - {self.APP_NAME}' if clean else self.APP_NAME
+        self._write_terminal(f'\x1b]0;{title}\x07')
+        self._window_title = title
+
+    def _title_for_input(self):
+        jtl = self.query_one('#jtl', Input).value.strip()
+        self.set_window_title(Path(jtl).name if jtl else '')
 
     def _load_config(self):
         """report.toml from the start folder or the current one: defaults and SLA."""
@@ -343,6 +372,9 @@ class ReportApp(App):
     def _files_title(label):
         return f'файлы: {label}'
 
+    def on_unmount(self):
+        self._write_terminal('\x1b[23;0t')  # bring the previous title back
+
     # ------------------------------------------------------------ events ----
 
     @on(DirectoryTree.FileSelected)
@@ -356,6 +388,7 @@ class ReportApp(App):
         self.query_one('#jtl', Input).value = str(path)
         if not self._output_touched:
             self.query_one('#output', Input).value = str(self._default_output(path))
+        self.set_window_title(path.name)
         standard, dashboard = find_xml_artifacts(path)
         self.query_one('#standard', Input).value = standard
         self.query_one('#dashboard', Input).value = dashboard
@@ -545,6 +578,7 @@ class ReportApp(App):
             return
 
         self.headline('Строю отчет...', ACCENT)
+        self.set_window_title(f'[..] строю отчет: {Path(jtl).name}')
         self._build_worker(
             str(Path(jtl).expanduser()), str(Path(output).expanduser()), tz, steps,
             str(Path(standard).expanduser()) if standard else None,
@@ -580,6 +614,7 @@ class ReportApp(App):
             self.call_from_thread(self._build_done, info)
 
     def _build_failed(self, message):
+        self.set_window_title('[!] ошибка при построении')
         self.headline('Ошибка', ERR)
         for line in message.splitlines():
             self.say(line, ERR)
@@ -603,6 +638,11 @@ class ReportApp(App):
             if not warning.startswith('сверка'):
                 self.say(f'внимание: {warning}', WARN)
         self._show_extras(info)
+        verdict = (info.get('extras') or {}).get('verdict')
+        if verdict is not None and not verdict.passed:
+            self.set_window_title(f'[!] SLA не выполнен: {Path(info["output"]).name}')
+        else:
+            self.set_window_title(f'[ok] готово: {Path(info["output"]).name}')
         for path in info.get('archived') or []:
             self.say(f'прошлая версия сохранена: history/{path.name}', DIM)
         self.headline(f'Готово: {info["output"]}', OK)

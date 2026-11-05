@@ -736,3 +736,69 @@ def test_demo_samples_folder_is_the_real_repo_folder(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     out = tui.default_output_path(repo / 'samples' / 'jmeter.jtl')
     assert out == tmp_path / 'reports' / 'jmeter_report.xlsx'
+
+
+# ------------------------------------------------ terminal window title ----
+
+def _record_terminal(app):
+    sent = []
+    app._write_terminal = sent.append
+    return sent
+
+
+def _titles(sent):
+    return [item[4:-1] for item in sent if item.startswith('\x1b]0;')]
+
+
+def test_window_title_follows_the_work(tmp_path, sample_jtl):
+    out = tmp_path / 'r.xlsx'
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        sent = _record_terminal(app)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.set_window_title()  # on_mount ran before the recorder was attached
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(out)
+            app.query_one('#tz-custom', Input).value = 'UTC'
+            app.action_build()
+            await _finish_build(app, pilot)
+        return sent
+
+    sent = run(scenario())
+    titles = _titles(sent)
+    assert titles[0] == 'JMeter -> Excel'
+    assert any(t.startswith('[..] строю отчет: sample.jtl') for t in titles)
+    assert titles[-1].startswith('[ok] готово: r.xlsx') and titles[-1].endswith('JMeter -> Excel')
+    assert '\x1b[23;0t' in sent  # the shell's own title is restored on exit
+
+
+def test_window_title_shows_errors_and_strips_control_characters(tmp_path):
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        sent = _record_terminal(app)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._build_failed('boom')
+            app.set_window_title('evil\x1b]0;x\x07name')
+        return sent
+
+    titles = _titles(run(scenario()))
+    assert any(t.startswith('[!] ошибка при построении') for t in titles)
+    assert not any('\x1b' in t[:-len(' - JMeter -> Excel')] for t in titles[:-1])
+    assert titles[-1] == 'evil]0;xname - JMeter -> Excel'
+
+
+def test_window_title_failure_never_breaks_the_app(tmp_path):
+    def closed(data):
+        raise OSError('closed')
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._driver.write = closed  # the terminal went away
+            app.set_window_title('x')  # must not raise
+
+    run(scenario())

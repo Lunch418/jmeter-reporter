@@ -22,19 +22,17 @@ the system time zone database (on Windows the `tzdata` package).
 
 ## Route 1 - wheel bundle (recommended)
 
-On a machine with internet and the **same Python version and OS family** as the target:
+On a machine with internet (any Python; the target version is given with `--python-version`):
 
 ```
-python tools/make_offline_bundle.py --with-tui
+python tools/make_offline_bundle.py --with-tui --python-version 3.10
 ```
 
-Cross-building for another target:
+A bundle fits ONE Python version: wheel versions differ (for example `platformdirs` needs 3.11+).
+GitHub Releases carry one zip per version: `-py310`, `-py311`, `-py312`, `-py313`. Take the one
+that matches `python3 --version` in the contour.
 
-```
-python tools/make_offline_bundle.py --python-version 3.10 --platform manylinux2014_x86_64
-```
-
-Copy `dist/jmeter-report-<version>-offline.zip` into the contour (through the approved media
+Copy `dist/jmeter-report-<version>-offline-pyXY.zip` into the contour (through the approved media
 channel), unpack, then:
 
 ```

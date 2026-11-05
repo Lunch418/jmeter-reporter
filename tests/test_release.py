@@ -39,7 +39,9 @@ def test_bundle_builds_without_network(tmp_path):
     archive = make_offline_bundle.build(out_dir=tmp_path, skip_download=True)
     with zipfile.ZipFile(archive) as zf:
         names = zf.namelist()
-    prefix = f'jmeter-report-{version.__version__}-offline/'
+    import sys
+    tag = f'{sys.version_info.major}{sys.version_info.minor}'
+    prefix = f'jmeter-report-{version.__version__}-offline-py{tag}/'
     assert prefix + 'convert.py' in names
     assert prefix + 'jmeter_reporter/convert.py' in names
     assert prefix + 'INSTALL.txt' in names
@@ -87,3 +89,20 @@ def test_breaking_release_needs_a_new_major_version():
 def test_released_versions_in_the_real_changelog_follow_semver():
     for released in changelog_section.versions():
         assert changelog_section.check_semver(released) is None, released
+
+
+def test_bundle_always_downloads_tomli_for_python_3_10(monkeypatch, tmp_path):
+    """A bundle built on 3.12 must still install on 3.10 without internet (needs tomli)."""
+    calls = []
+    monkeypatch.setattr(make_offline_bundle.subprocess, 'run',
+                        lambda cmd, check: calls.append(cmd))
+    make_offline_bundle.download('requirements.txt', tmp_path)
+    extra = [cmd for cmd in calls if 'tomli>=2.0' in cmd]
+    assert extra and '--platform' in extra[0] and 'any' in extra[0]  # universal wheel
+    assert all('--only-binary=:all:' in cmd for cmd in calls)
+
+
+def test_bundle_name_carries_the_target_python_version(tmp_path):
+    archive = make_offline_bundle.build(python_version='3.10', out_dir=tmp_path,
+                                        skip_download=True)
+    assert archive.name.endswith('-offline-py310.zip')

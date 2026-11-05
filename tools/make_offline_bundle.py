@@ -55,6 +55,14 @@ def sha256(path):
     return digest.hexdigest()
 
 
+# Pure-Python packages that are needed on SOME supported Pythons only (environment markers
+# are evaluated for the interpreter that BUILDS the bundle, so a 3.12 build would silently
+# leave tomli out and a 3.10 machine could not install it without internet). Fetched as the
+# universal py3-none-any wheel: the default choice for a 3.12 host is a compiled cp312 wheel
+# that no other Python can use.
+ALWAYS_INCLUDE = ['tomli>=2.0']
+
+
 def download(requirements, target, python_version=None, platform=None):
     cmd = [sys.executable, '-m', 'pip', 'download', '-r', str(ROOT / requirements),
            '-d', str(target), '--only-binary=:all:']
@@ -63,11 +71,18 @@ def download(requirements, target, python_version=None, platform=None):
     if platform:
         cmd += ['--platform', platform]
     subprocess.run(cmd, check=True)
+    extra = [sys.executable, '-m', 'pip', 'download', *ALWAYS_INCLUDE, '-d', str(target),
+             '--only-binary=:all:', '--no-deps', '--implementation', 'py',
+             '--python-version', '3.10', '--abi', 'none', '--platform', 'any']
+    subprocess.run(extra, check=True)
 
 
 def build(with_tui=False, python_version=None, platform=None, out_dir=None, skip_download=False):
     out_dir = Path(out_dir or ROOT / 'dist')
-    name = f'jmeter-report-{__version__}-offline'
+    # Wheels are chosen for ONE Python version (newer releases of some dependencies need 3.11+,
+    # so a bundle built on 3.12 cannot be installed on 3.10): the version is part of the name.
+    tag = (python_version or f'{sys.version_info.major}.{sys.version_info.minor}').replace('.', '')
+    name = f'jmeter-report-{__version__}-offline-py{tag}'
     stage = out_dir / name
     if stage.exists():
         shutil.rmtree(stage)
