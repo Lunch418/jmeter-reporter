@@ -3,7 +3,7 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
-## [Unreleased]
+## [1.1.0] - 2026-11-05
 
 ### Added
 - Run history: a report that is about to be overwritten moves to `history/` with its own
