@@ -1,187 +1,88 @@
-# 📊 Инструкция по генерации отчетов JMeter
+# JMeter -> Excel report
 
-## Описание
-Этот скрипт автоматически преобразует результаты нагрузочного тестирования JMeter из Jenkins в красиво оформленный Excel отчет с графиками и таблицами.
+Turns JMeter load test results (a `.jtl` file in CSV format, for example a
+Jenkins build artifact) into an Excel report with a summary table, a response
+time chart and the raw data.
 
----
+Two ways to use it: a **terminal UI** (pick files with the keyboard) and a
+plain **command line**.
 
-## 📋 Что вам понадобится
+## Install
 
-### 1. Python 3.6+
-Убедитесь, что Python установлен:
-```bash
-python3 --version
-```
-
-### 2. Библиотека openpyxl
-Установите зависимость:
-```bash
-pip install openpyxl
-```
-
-### 3. Три файла из Jenkins
-Нужно скачать из артефактов тестирования в Jenkins:
-
-| Файл | Описание | Расширение |
-|------|---------|-----------|
-| **jmeter.jtl** | Основной файл результатов | `.jtl` |
-| **dashBoard_jmeter.xml** | Дэшборд JMeter | `.xml` |
-| **standardResults.xml** | Стандартные результаты | `.xml` |
-
----
-
-## 🔍 Как скачать файлы из Jenkins
-
-### Шаг 1: Откройте сборку
-1. Перейдите в Jenkins → выберите нужную сборку
-2. Нажмите на сборку, которая вам нужна
-
-### Шаг 2: Найдите артефакты
-1. На странице сборки нажмите **"Artifacts"** (или похожую ссылку)
-2. Скачайте следующие файлы:
-   - `jmeter (1).jtl` → переименуйте в `jmeter.jtl`
-   - `dashBoard_jmeter.xml`
-   - `standardResults.xml`
-
-### Шаг 3: Проверьте файлы
-После скачивания у вас должны быть три файла в одной папке:
-```
-📁 Папка с файлами
-├── jmeter.jtl
-├── dashBoard_jmeter.xml
-└── standardResults.xml
-```
-
----
-
-## 🚀 Запуск скрипта
-
-### Вариант 1: Windows (PowerShell/CMD)
-
-**Откройте Command Prompt в папке со скриптом и файлами:**
+Python 3.9+ is required.
 
 ```bash
-python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
+python3 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-**Результат:**
-- Будет создан файл `report.xlsx` в той же папке
-
-### Вариант 2: Linux/Mac
+## Terminal UI
 
 ```bash
-python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
+python3 tui.py                   # starts in the current directory
+python3 tui.py ~/Downloads       # or in any other directory
 ```
 
-или 
+- left: file tree, filtered by type (`.jtl/.csv` or all files); hidden files are not shown
+- right: input file, output `.xlsx`, time zone (list or custom), regex for chart steps
+- `Ctrl+R` or the button builds the report, `Ctrl+Q` quits, `Tab` moves between fields
+- the result (samples, errors, start/end time, duration) is shown in the log at the bottom
+
+## Command line
 
 ```bash
-./convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
+python3 convert.py jmeter.jtl report.xlsx
+python3 convert.py jmeter.jtl report.xlsx --tz Europe/Moscow
+python3 convert.py jmeter.jtl report.xlsx --steps '^0[1-5]\.'
 ```
 
-### Если скрипт не находится в PATH
-Укажите полный путь:
+The old four-argument form
+`convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx`
+still works, but the two XML files are ignored: every number is computed from the JTL.
+
+| Option | Meaning |
+|--------|---------|
+| `--tz ZONE` | Time zone for timestamps: `local` (default), `UTC`, `Europe/Moscow`, `+05:00` |
+| `--steps REGEX` | Which labels go to the chart sheet. Default `^\d{2}\.` (labels like `01. Login`) |
+
+## Getting the input file from Jenkins
+
+Open the build -> Artifacts -> download the `.jtl` file (for example
+`jmeter (1).jtl`). The JTL must be CSV: set
+`jmeter.save.saveservice.output_format=csv` in JMeter. Required columns:
+`timeStamp`, `elapsed`, `label`; `success` is needed for the error rate.
+
+## Report layout
+
+1. **Summary** - start/end time, duration, and per label: samples, average, median,
+   90/95/99% lines, min, max, error %, throughput, received/sent KB/s, plus a TOTAL row.
+   Statistics follow JMeter's own formulas (percentile index `round(n*p)-1`,
+   integer average), so the numbers match the JMeter dashboard.
+2. **Time chart** - table and horizontal bar chart (Average and 90% Line) for the steps
+   selected by `--steps`.
+3. **Raw data** - the full JTL (cut at the Excel row limit, with a warning).
+
+## Sample data and tests
+
+The repository contains only **synthetic** data: `samples/jmeter.jtl` is produced by
+`tools/make_sample.py` (fake host `example.test`, seeded random numbers).
 
 ```bash
-python3 /path/to/convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
+python3 tools/make_sample.py samples/jmeter.jtl      # regenerate the sample
+python3 convert.py samples/jmeter.jtl demo.xlsx --tz UTC
+
+pip install -r requirements-dev.txt
+python3 -m pytest -q --cov=convert --cov=tui --cov=tools
 ```
 
----
+Do not commit real test runs: `.gitignore` blocks `*.jtl`, `*.xlsx` and Jenkins XML
+files everywhere except `samples/`.
 
-## 📊 Структура выходного отчета
+## Troubleshooting
 
-### Лист 1: **Сводка**
-- Информация о тесте (дата начала, конца, длительность)
-- Таблица со всеми метриками:
-  - Label (название шага)
-  - # Samples (кол-во выборок)
-  - Average, Median (среднее и медиана времени)
-  - 90% Line, 95% Line, 99% Line (перцентили)
-  - Min, Max (минимум, максимум)
-  - Error % (процент ошибок)
-  - Throughput (пропускная способность)
-  - Received KB/sec, Sent KB/sec (скорость передачи)
-
-### Лист 2: **График времени**
-- Таблица только основных шагов (01-10)
-- **Горизонтальная диаграмма** с двумя сериями:
-  - Average (синие столбцы) - среднее время
-  - 90% Line (оранжевые столбцы) - 90-й перцентиль
-
-### Лист 3: **Исходные данные**
-- Полные исходные данные из JTL файла
-
----
-
-
-## ⚠️ Возможные ошибки и решения
-
-### Ошибка: "ModuleNotFoundError: No module named 'openpyxl'"
-**Решение:**
-```bash
-pip install openpyxl
-```
-
-### Ошибка: "No such file or directory"
-**Проверьте:**
-1. Все три файла находятся в одной папке со скриптом
-2. Правильно написаны имена файлов
-3. Вы в правильной директории:
-```bash
-cd C:\path\to\folder  # Windows
-cd /path/to/folder    # Linux/Mac
-```
-
-### Отчет создан, но данные неправильные
-**Проверьте:**
-1. Что вы скачали именно эти файлы из Jenkins:
-   - `jmeter.jtl` (не `jmeter (1).jtl`)
-   - `dashBoard_jmeter.xml`
-   - `standardResults.xml`
-2. Файлы не повреждены
-
----
-
-## 💡 Советы
-
-### Автоматизация на Windows
-Создайте файл `run.bat`:
-```batch
-@echo off
-python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
-pause
-```
-
-Затем просто кликните на `run.bat` и скрипт запустится.
-
-### Автоматизация на Linux/Mac
-Создайте файл `run.sh`:
-```bash
-#!/bin/bash
-python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
-```
-
-Сделайте его исполняемым:
-```bash
-chmod +x run.sh
-./run.sh
-```
-
-### Разные имена файлов
-Если ваши файлы называются по-другому, просто измените команду:
-```bash
-python3 convert.py mytest.jtl my_dashboard.xml my_results.xml output.xlsx
-```
-
----
-
-## ✅ Проверка результата
-
-После успешного выполнения вы увидите:
-```
-✅ Файл 'report.xlsx' успешно создан!
-   Листы: Сводка, График времени, Исходные данные
-   Строк данных: [количество]
-```
-
-Откройте `report.xlsx` в Excel/LibreOffice и наслаждайтесь красивым отчетом! 🎉
+- `ModuleNotFoundError: openpyxl` / `textual` - run `pip install -r requirements.txt`
+  (inside the virtual environment).
+- "file looks like XML" - the JTL was saved as XML; switch JMeter to CSV output.
+- Wrong times - pass `--tz` (or choose the zone in the UI); the default is the local
+  time of the machine running the script.

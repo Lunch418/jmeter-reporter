@@ -6,7 +6,7 @@
     python3 convert.py jmeter.jtl report.xlsx
     python3 convert.py jmeter.jtl report.xlsx --tz Europe/Moscow
 
-Время в отчёте по умолчанию — локальное время той машины, где запущен скрипт.
+Время в отчёте по умолчанию - локальное время той машины, где запущен скрипт.
 Переопределить: --tz Europe/Moscow | --tz UTC | --tz +05:00 | --tz local
 """
 import csv
@@ -21,9 +21,16 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, Reference
 
-# Лимит строк листа Excel (xlsx). Лист «Исходные данные» обрезается по нему,
+# Лимит строк листа Excel (xlsx). Лист 'Исходные данные' обрезается по нему,
 # иначе openpyxl падает на большом JTL уже в момент сохранения.
 EXCEL_MAX_ROWS = 1_048_576
+
+# Шаги сценария по умолчанию: 'NN. Название'.
+DEFAULT_STEP_PATTERN = r'^\d{2}\.'
+
+
+class ReportError(Exception):
+    """Ошибка входных данных или параметров; текст предназначен для пользователя."""
 
 
 # ---------------------------------------------------------------- время ----
@@ -49,7 +56,7 @@ def resolve_timezone(spec):
     try:
         from zoneinfo import ZoneInfo
     except ImportError:
-        sys.exit(
+        raise ReportError(
             f"Именованный часовой пояс '{spec}' требует Python 3.9+.\n"
             f"На более старой версии укажите смещение явно, например: --tz +03:00"
         )
@@ -57,7 +64,7 @@ def resolve_timezone(spec):
     try:
         return ZoneInfo(spec)
     except Exception:
-        sys.exit(
+        raise ReportError(
             f"Неизвестный часовой пояс: '{spec}'.\n"
             f"Ожидается имя вида Europe/Moscow, UTC, либо смещение вида +05:00.\n"
             f"На Windows именованные пояса требуют пакета tzdata: pip install tzdata"
@@ -80,7 +87,7 @@ def format_timestamp(ts_ms, tz):
 def timezone_label(ts_ms, tz):
     """Подпись пояса для шапки отчёта: 'UTC+03:00'.
 
-    Смещение считается на момент самого теста, а не на «сейчас», поэтому
+    Смещение считается на момент самого теста, а не на 'сейчас', поэтому
     отчёт по летнему тесту, открытый зимой, всё равно подпишется правильно.
     """
     try:
@@ -111,7 +118,7 @@ def to_int(value, default=0):
     """int() устойчивый к пустым и нечисловым ячейкам JTL.
 
     dict.get(key, 0) здесь не спасает: в JTL колонка часто присутствует,
-    но пустая, и .get вернёт '' — int('') падает с ValueError.
+    но пустая, и .get вернёт '' - int('') падает с ValueError.
     """
     try:
         return int(str(value).strip())
@@ -124,7 +131,7 @@ def parse_jtl_file(jtl_file):
         head = f.read(200)
         f.seek(0)
         if head.lstrip().startswith('<'):
-            sys.exit(
+            raise ReportError(
                 f"Файл '{jtl_file}' похож на JTL в формате XML, а скрипт читает CSV.\n"
                 f"В JMeter выставьте jmeter.save.saveservice.output_format=csv "
                 f"и перезапустите тест."
@@ -135,10 +142,10 @@ def parse_jtl_file(jtl_file):
 def percentile(sorted_values, fraction):
     """Перцентиль по формуле JMeter: индекс round(n * p) - 1.
 
-    Медиана здесь — тот же самый вызов с fraction=0.5, а НЕ statistics.median():
+    Медиана здесь - тот же самый вызов с fraction=0.5, а НЕ statistics.median():
     JMeter берёт один средний элемент, а statistics.median на чётном n
     усредняет два соседних. На реальных данных это расходится в разы
-    (шаг «01. Home page»: 121 у JMeter против 327 у statistics.median).
+    (шаг '01. Home page': 121 у JMeter против 327 у statistics.median).
     """
     n = len(sorted_values)
     return sorted_values[max(0, round(n * fraction) - 1)]
@@ -186,23 +193,24 @@ def collect_stats(rows):
 
 # ---------------------------------------------------------------- отчёт ----
 
-def create_excel_report(jtl_file, output_file, tz=None):
+def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN):
+    """Строит xlsx-отчёт. Возвращает словарь со сводкой (для CLI и UI)."""
     jtl_data = parse_jtl_file(jtl_file)
 
     if not jtl_data:
-        sys.exit(f"Не удалось прочитать данные из JTL файла '{jtl_file}' — файл пуст.")
+        raise ReportError(f"Не удалось прочитать данные из JTL файла '{jtl_file}' - файл пуст.")
 
     missing = {'timeStamp', 'elapsed', 'label'} - set(jtl_data[0].keys())
     if missing:
-        sys.exit(
+        raise ReportError(
             f"В '{jtl_file}' нет обязательных колонок: {', '.join(sorted(missing))}.\n"
             f"Найдены: {', '.join(jtl_data[0].keys())}"
         )
+    warnings = []
     if 'success' not in jtl_data[0]:
-        print("Внимание: в JTL нет колонки 'success' — все замеры будут учтены как ошибочные.",
-              file=sys.stderr)
+        warnings.append("в JTL нет колонки 'success' - все замеры будут учтены как ошибочные")
 
-    # Порядок меток — как в JTL, а не по алфавиту: он совпадает с порядком
+    # Порядок меток - как в JTL, а не по алфавиту: он совпадает с порядком
     # шагов сценария, и заказчик читает отчёт именно в этом порядке.
     grouped = defaultdict(list)
     for row in jtl_data:
@@ -314,10 +322,13 @@ def create_excel_report(jtl_file, output_file, tz=None):
         cell.border = thin_border
         cell.alignment = Alignment(horizontal='center')
 
-    # Любой шаг вида 'NN. ...', а не жёстко 01–10: одиннадцатый шаг
+    # Любой шаг вида 'NN. ...', а не жёстко 01-10: одиннадцатый шаг
     # раньше молча исчезал и из таблицы, и из диаграммы.
-    step_pattern = re.compile(r'^\d{2}\.')
-    main_steps = [s for s in stats if step_pattern.match(s['label'])]
+    try:
+        step_re = re.compile(step_pattern)
+    except re.error as exc:
+        raise ReportError(f"Некорректное регулярное выражение шагов '{step_pattern}': {exc}")
+    main_steps = [s for s in stats if step_re.match(s['label'])]
 
     r_idx = FIRST_DATA_ROW
     for s in main_steps:
@@ -343,7 +354,7 @@ def create_excel_report(jtl_file, output_file, tz=None):
 
         # Ряды берутся с HEADER_ROW (titles_from_data=True) по last_data_row.
         # Раньше верхняя граница считалась как 2 + len(main_steps), то есть
-        # на строку меньше, и последний шаг («10. Выход из системы») просто
+        # на строку меньше, и последний шаг ('10. Выход из системы') просто
         # не попадал в диаграмму, а подписи категорий уезжали на шаг.
         chart.add_data(Reference(ws2, min_col=3, min_row=HEADER_ROW, max_row=last_data_row),
                        titles_from_data=True)
@@ -386,14 +397,28 @@ def create_excel_report(jtl_file, output_file, tz=None):
             cell.border = thin_border
 
     if truncated > 0:
-        print(f"Внимание: лист «Исходные данные» обрезан — {truncated} строк "
-              f"не поместились в лимит Excel ({EXCEL_MAX_ROWS} строк).", file=sys.stderr)
+        warnings.append(f"лист 'Исходные данные' обрезан: {truncated} строк "
+                        f"не поместились в лимит Excel ({EXCEL_MAX_ROWS} строк)")
 
-    wb.save(output_file)
-    print(f"Файл '{output_file}' успешно создан!")
-    print(f"   Листы: {', '.join(wb.sheetnames)}")
-    print(f"   Строк данных: {len(jtl_data)}")
-    print(f"   Время в отчёте: {tz_label}")
+    try:
+        wb.save(output_file)
+    except OSError as exc:
+        raise ReportError(f"Не удалось сохранить '{output_file}': {exc}")
+
+    return {
+        'output': output_file,
+        'sheets': list(wb.sheetnames),
+        'rows': len(jtl_data),
+        'steps': len(main_steps),
+        'labels': len(stats),
+        'errors': sum(1 for r in jtl_data
+                      if str(r.get('success', '')).strip().upper() != 'TRUE'),
+        'timezone': tz_label,
+        'start': start_time,
+        'end': end_time,
+        'duration': duration_str,
+        'warnings': warnings,
+    }
 
 
 # ------------------------------------------------------------------ CLI ----
@@ -404,14 +429,17 @@ USAGE = (
     "  python3 convert.py jmeter.jtl report.xlsx\n"
     "\n"
     "Опции:\n"
+    "  --steps RE  Регулярное выражение для шагов на листе 'График времени'.\n"
+    "              По умолчанию '^\\d{2}\\.' (метки вида '01. ...').\n"
     "  --tz ПОЯС   Часовой пояс для меток времени в отчёте.\n"
-    "              По умолчанию — локальное время машины.\n"
+    "              По умолчанию - локальное время машины.\n"
     "              Примеры: --tz Europe/Moscow, --tz UTC, --tz +05:00\n"
 )
 
 
 def parse_args(argv):
     tz_spec = None
+    steps = DEFAULT_STEP_PATTERN
     positional = []
     i = 0
     while i < len(argv):
@@ -424,6 +452,14 @@ def parse_args(argv):
                 sys.exit("Ошибка: у --tz не указано значение.\n\n" + USAGE)
             tz_spec = argv[i + 1]
             i += 2
+        elif arg == '--steps':
+            if i + 1 >= len(argv):
+                sys.exit("Ошибка: у --steps не указано значение.\n\n" + USAGE)
+            steps = argv[i + 1]
+            i += 2
+        elif arg.startswith('--steps='):
+            steps = arg[len('--steps='):]
+            i += 1
         elif arg.startswith('--tz='):
             tz_spec = arg[len('--tz='):]
             i += 1
@@ -432,8 +468,8 @@ def parse_args(argv):
             i += 1
 
     # Поддерживаются обе формы вызова: короткая и историческая четырёхаргументная.
-    # dashBoard_jmeter.xml и standardResults.xml скриптом не используются —
-    # все цифры отчёта считаются из JTL, — но команда из README продолжает работать.
+    # dashBoard_jmeter.xml и standardResults.xml скриптом не используются -
+    # все цифры отчёта считаются из JTL, - но команда из README продолжает работать.
     if len(positional) == 2:
         jtl_file, output_file = positional
     elif len(positional) == 4:
@@ -444,9 +480,27 @@ def parse_args(argv):
     if not os.path.isfile(jtl_file):
         sys.exit(f"Файл не найден: '{jtl_file}'")
 
-    return jtl_file, output_file, resolve_timezone(tz_spec)
+    try:
+        tz = resolve_timezone(tz_spec)
+    except ReportError as exc:
+        sys.exit(str(exc))
+    return jtl_file, output_file, tz, steps
+
+
+def main(argv=None):
+    jtl_path, output_path, timezone_obj, steps = parse_args(
+        sys.argv[1:] if argv is None else argv)
+    try:
+        info = create_excel_report(jtl_path, output_path, tz=timezone_obj, step_pattern=steps)
+    except ReportError as exc:
+        sys.exit(str(exc))
+    for warning in info['warnings']:
+        print(f"Внимание: {warning}", file=sys.stderr)
+    print(f"Файл '{info['output']}' успешно создан!")
+    print(f"   Листы: {', '.join(info['sheets'])}")
+    print(f"   Строк данных: {info['rows']}")
+    print(f"   Время в отчёте: {info['timezone']}")
 
 
 if __name__ == '__main__':
-    jtl_path, output_path, timezone_obj = parse_args(sys.argv[1:])
-    create_excel_report(jtl_path, output_path, tz=timezone_obj)
+    main()

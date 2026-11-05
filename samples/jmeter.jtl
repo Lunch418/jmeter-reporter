@@ -1,0 +1,541 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1768471200000,96,home page-0,200,OK,Thread Group 1-1,text,true,,1076,395,2,2,https://app.example.test/api/step1/0,94,0,1
+1768471200101,95,home page-1,200,OK,Thread Group 1-1,text,true,,7723,817,2,2,https://app.example.test/api/step1/1,93,0,4
+1768471200200,106,home page-2,200,OK,Thread Group 1-1,text,true,,969,874,2,2,https://app.example.test/api/step1/2,104,0,1
+1768471200000,308,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,20349,2028,2,2,null,0,4,0
+1768471201066,420,login-0,200,OK,Thread Group 1-1,text,true,,3139,689,2,2,https://app.example.test/api/step2/0,418,0,0
+1768471201493,318,login-1,200,OK,Thread Group 1-1,text,true,,11863,652,2,2,https://app.example.test/api/step2/1,316,0,4
+1768471201812,398,login-2,200,OK,Thread Group 1-1,text,true,,8767,344,2,2,https://app.example.test/api/step2/2,396,0,5
+1768471202213,278,login-3,200,OK,Thread Group 1-1,text,true,,15154,849,2,2,https://app.example.test/api/step2/3,276,0,0
+1768471201066,1428,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,8055,1678,2,2,null,0,13,0
+1768471203081,313,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,1601,533,2,2,https://app.example.test/api/step3/0,311,0,2
+1768471203396,221,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,2714,538,2,2,https://app.example.test/api/step3/1,219,0,0
+1768471203081,542,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,19918,1087,2,2,null,0,8,0
+1768471204212,29,search by keyword-0,200,OK,Thread Group 1-1,text,true,,5429,679,2,2,https://app.example.test/api/step4/0,27,0,2
+1768471204212,34,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,15857,2903,2,2,null,0,46,0
+1768471204660,24,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,17602,550,2,2,https://app.example.test/api/step5/0,22,0,1
+1768471204660,26,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,20960,2900,2,2,null,0,21,0
+1768471205359,32,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,7296,632,2,2,https://app.example.test/api/step6/0,30,0,0
+1768471205359,39,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,9845,2921,2,2,null,0,71,0
+1768471205832,35,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,18685,622,2,2,https://app.example.test/api/step7/0,33,0,1
+1768471205832,42,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,9773,571,2,2,null,0,27,0
+1768471206585,26,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,4781,571,2,2,https://app.example.test/api/step8/0,24,0,1
+1768471206585,33,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,29989,2933,2,2,null,0,58,0
+1768471207070,39,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,7286,441,2,2,https://app.example.test/api/step9/0,37,0,4
+1768471207070,46,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,20121,1935,2,2,null,0,46,0
+1768471207821,51,logout-0,200,OK,Thread Group 1-1,text,true,,19643,365,2,2,https://app.example.test/api/step10/0,49,0,3
+1768471207874,76,logout-1,200,OK,Thread Group 1-1,text,true,,12604,779,2,2,https://app.example.test/api/step10/1,74,0,4
+1768471207821,132,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,21560,955,2,2,null,0,54,0
+1768471209000,50,home page-0,200,OK,Thread Group 1-2,text,true,,5282,764,2,2,https://app.example.test/api/step1/0,48,0,0
+1768471209051,94,home page-1,200,OK,Thread Group 1-2,text,true,,8730,812,2,2,https://app.example.test/api/step1/1,92,0,1
+1768471209150,88,home page-2,200,OK,Thread Group 1-2,text,true,,16735,408,2,2,https://app.example.test/api/step1/2,86,0,5
+1768471209000,244,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,4655,1502,2,2,null,0,55,0
+1768471209749,348,login-0,200,OK,Thread Group 1-2,text,true,,11994,614,2,2,https://app.example.test/api/step2/0,346,0,1
+1768471210101,225,login-1,200,OK,Thread Group 1-2,text,true,,1998,546,2,2,https://app.example.test/api/step2/1,223,0,4
+1768471210329,268,login-2,200,OK,Thread Group 1-2,text,true,,2680,387,2,2,https://app.example.test/api/step2/2,266,0,5
+1768471210598,331,login-3,200,OK,Thread Group 1-2,text,true,,16024,370,2,2,https://app.example.test/api/step2/3,329,0,4
+1768471209749,1186,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,17010,379,2,2,null,0,14,0
+1768471211263,478,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,7040,852,2,2,https://app.example.test/api/step3/0,476,0,5
+1768471211744,481,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,6691,619,2,2,https://app.example.test/api/step3/1,479,0,3
+1768471211263,967,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,18290,2784,2,2,null,0,54,0
+1768471212812,25,search by keyword-0,200,OK,Thread Group 1-2,text,true,,11178,321,2,2,https://app.example.test/api/step4/0,23,0,4
+1768471212812,27,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,9123,1220,2,2,null,0,8,0
+1768471213606,33,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,2426,360,2,2,https://app.example.test/api/step5/0,31,0,1
+1768471213606,37,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,20282,1202,2,2,null,0,0,0
+1768471213912,70,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,16006,519,2,2,https://app.example.test/api/step6/0,68,0,4
+1768471213912,72,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,17847,1274,2,2,null,0,35,0
+1768471214319,21,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,6339,396,2,2,https://app.example.test/api/step7/0,19,0,0
+1768471214319,29,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,8962,2237,2,2,null,0,52,0
+1768471214989,37,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,2086,712,2,2,https://app.example.test/api/step8/0,35,0,5
+1768471214989,38,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,23064,2976,2,2,null,0,12,0
+1768471215574,48,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,17673,759,2,2,https://app.example.test/api/step9/0,46,0,1
+1768471215574,50,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,9147,1084,2,2,null,0,24,0
+1768471216256,83,logout-0,200,OK,Thread Group 1-2,text,true,,1757,853,2,2,https://app.example.test/api/step10/0,81,0,0
+1768471216341,94,logout-1,200,OK,Thread Group 1-2,text,true,,3156,542,2,2,https://app.example.test/api/step10/1,92,0,1
+1768471216256,187,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,27477,2554,2,2,null,0,12,0
+1768471218000,82,home page-0,200,OK,Thread Group 1-1,text,true,,13961,869,2,2,https://app.example.test/api/step1/0,80,0,5
+1768471218089,101,home page-1,200,OK,Thread Group 1-1,text,true,,16047,458,2,2,https://app.example.test/api/step1/1,99,0,1
+1768471218191,100,home page-2,200,OK,Thread Group 1-1,text,true,,9822,522,2,2,https://app.example.test/api/step1/2,98,0,0
+1768471218000,298,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,9690,2163,2,2,null,0,36,0
+1768471219091,304,login-0,200,OK,Thread Group 1-1,text,true,,7807,713,2,2,https://app.example.test/api/step2/0,302,0,0
+1768471219396,299,login-1,200,OK,Thread Group 1-1,text,true,,18767,552,2,2,https://app.example.test/api/step2/1,297,0,4
+1768471219703,274,login-2,200,OK,Thread Group 1-1,text,true,,19581,340,2,2,https://app.example.test/api/step2/2,272,0,4
+1768471219980,383,login-3,200,OK,Thread Group 1-1,text,true,,2786,729,2,2,https://app.example.test/api/step2/3,381,0,5
+1768471219091,1275,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,3245,2737,2,2,null,0,8,0
+1768471221163,441,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,4388,607,2,2,https://app.example.test/api/step3/0,439,0,3
+1768471221610,461,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,10460,374,2,2,https://app.example.test/api/step3/1,459,0,0
+1768471221163,914,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,8821,1387,2,2,null,0,50,0
+1768471222746,32,search by keyword-0,200,OK,Thread Group 1-1,text,true,,16676,571,2,2,https://app.example.test/api/step4/0,30,0,1
+1768471222746,34,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,3400,2502,2,2,null,0,27,0
+1768471223337,41,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,17900,609,2,2,https://app.example.test/api/step5/0,39,0,4
+1768471223337,47,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,10338,946,2,2,null,0,56,0
+1768471224125,32,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,3494,437,2,2,https://app.example.test/api/step6/0,30,0,2
+1768471224125,33,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,22884,2571,2,2,null,0,38,0
+1768471224476,39,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,7001,651,2,2,https://app.example.test/api/step7/0,37,0,1
+1768471224476,42,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,9924,1454,2,2,null,0,77,0
+1768471224988,33,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,13979,583,2,2,https://app.example.test/api/step8/0,31,0,0
+1768471224988,41,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,9228,508,2,2,null,0,11,0
+1768471225232,37,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,14114,874,2,2,https://app.example.test/api/step9/0,35,0,0
+1768471225232,42,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,6294,2109,2,2,null,0,70,0
+1768471225588,83,logout-0,200,OK,Thread Group 1-1,text,true,,19187,865,2,2,https://app.example.test/api/step10/0,81,0,1
+1768471225673,102,logout-1,200,OK,Thread Group 1-1,text,true,,14183,430,2,2,https://app.example.test/api/step10/1,100,0,0
+1768471225588,190,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,18877,447,2,2,null,0,47,0
+1768471227000,87,home page-0,200,OK,Thread Group 1-2,text,true,,11689,873,2,2,https://app.example.test/api/step1/0,85,0,3
+1768471227093,135,home page-1,200,OK,Thread Group 1-2,text,true,,5164,542,2,2,https://app.example.test/api/step1/1,133,0,1
+1768471227229,73,home page-2,200,OK,Thread Group 1-2,text,true,,5901,722,2,2,https://app.example.test/api/step1/2,71,0,0
+1768471227000,308,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,7883,1322,2,2,null,0,13,0
+1768471227691,294,login-0,200,OK,Thread Group 1-2,text,true,,7388,504,2,2,https://app.example.test/api/step2/0,292,0,3
+1768471227992,232,login-1,200,OK,Thread Group 1-2,text,true,,11557,612,2,2,https://app.example.test/api/step2/1,230,0,1
+1768471228228,286,login-2,200,OK,Thread Group 1-2,text,true,,7404,324,2,2,https://app.example.test/api/step2/2,284,0,5
+1768471228516,431,login-3,200,OK,Thread Group 1-2,text,true,,6428,708,2,2,https://app.example.test/api/step2/3,429,0,2
+1768471227691,1263,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,29579,458,2,2,null,0,60,0
+1768471229439,571,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,17670,639,2,2,https://app.example.test/api/step3/0,569,0,0
+1768471230015,203,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,3879,567,2,2,https://app.example.test/api/step3/1,201,0,1
+1768471229439,785,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,22020,2386,2,2,null,0,51,0
+1768471231018,41,search by keyword-0,200,OK,Thread Group 1-2,text,true,,10378,746,2,2,https://app.example.test/api/step4/0,39,0,4
+1768471231018,43,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,20548,2079,2,2,null,0,44,0
+1768471231784,28,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,8446,345,2,2,https://app.example.test/api/step5/0,26,0,5
+1768471231784,30,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,13622,2661,2,2,null,0,24,0
+1768471232460,78,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,10919,621,2,2,https://app.example.test/api/step6/0,76,0,5
+1768471232460,82,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,12934,2066,2,2,null,0,8,0
+1768471232869,30,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,10788,712,2,2,https://app.example.test/api/step7/0,28,0,5
+1768471232869,35,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,17617,1566,2,2,null,0,52,0
+1768471233406,38,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,18748,608,2,2,https://app.example.test/api/step8/0,36,0,3
+1768471233406,45,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,23194,1012,2,2,null,0,78,0
+1768471234212,37,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,14186,893,2,2,https://app.example.test/api/step9/0,35,0,4
+1768471234212,38,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,10957,1475,2,2,null,0,26,0
+1768471234779,55,logout-0,200,OK,Thread Group 1-2,text,true,,9399,827,2,2,https://app.example.test/api/step10/0,53,0,5
+1768471234838,79,logout-1,200,OK,Thread Group 1-2,text,true,,11083,395,2,2,https://app.example.test/api/step10/1,77,0,1
+1768471234779,146,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,27009,995,2,2,null,0,10,0
+1768471236000,102,home page-0,200,OK,Thread Group 1-1,text,true,,18963,499,2,2,https://app.example.test/api/step1/0,100,0,5
+1768471236103,116,home page-1,200,OK,Thread Group 1-1,text,true,,12682,806,2,2,https://app.example.test/api/step1/1,114,0,3
+1768471236220,100,home page-2,200,OK,Thread Group 1-1,text,true,,8094,451,2,2,https://app.example.test/api/step1/2,98,0,5
+1768471236000,322,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,15923,1997,2,2,null,0,80,0
+1768471236527,385,login-0,200,OK,Thread Group 1-1,text,true,,17504,872,2,2,https://app.example.test/api/step2/0,383,0,4
+1768471236914,309,login-1,200,OK,Thread Group 1-1,text,true,,10497,753,2,2,https://app.example.test/api/step2/1,307,0,4
+1768471237231,248,login-2,200,OK,Thread Group 1-1,text,true,,16640,736,2,2,https://app.example.test/api/step2/2,246,0,4
+1768471237480,143,login-3,200,OK,Thread Group 1-1,text,true,,14711,462,2,2,https://app.example.test/api/step2/3,141,0,5
+1768471236527,1098,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,15957,846,2,2,null,0,59,0
+1768471238311,321,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,7939,581,2,2,https://app.example.test/api/step3/0,319,0,3
+1768471238640,395,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,2638,592,2,2,https://app.example.test/api/step3/1,393,0,1
+1768471238311,729,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,26094,2435,2,2,null,0,62,0
+1768471239518,41,search by keyword-0,200,OK,Thread Group 1-1,text,true,,4634,454,2,2,https://app.example.test/api/step4/0,39,0,1
+1768471239518,47,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,11476,2512,2,2,null,0,10,0
+1768471240157,25,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,17880,777,2,2,https://app.example.test/api/step5/0,23,0,3
+1768471240157,27,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,14594,1969,2,2,null,0,42,0
+1768471240447,31,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,19239,320,2,2,https://app.example.test/api/step6/0,29,0,4
+1768471240447,35,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,28292,2020,2,2,null,0,49,0
+1768471241071,12,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,17736,859,2,2,https://app.example.test/api/step7/0,10,0,4
+1768471241071,17,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,25689,1897,2,2,null,0,53,0
+1768471241513,48,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,16013,329,2,2,https://app.example.test/api/step8/0,46,0,3
+1768471241513,56,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,8190,1417,2,2,null,0,55,0
+1768471242113,31,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,17602,327,2,2,https://app.example.test/api/step9/0,29,0,3
+1768471242113,34,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,28541,2214,2,2,null,0,16,0
+1768471242924,45,logout-0,200,OK,Thread Group 1-1,text,true,,12522,635,2,2,https://app.example.test/api/step10/0,43,0,1
+1768471242970,92,logout-1,200,OK,Thread Group 1-1,text,true,,14999,634,2,2,https://app.example.test/api/step10/1,90,0,2
+1768471242924,146,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,6954,505,2,2,null,0,33,0
+1768471245000,113,home page-0,200,OK,Thread Group 1-2,text,true,,1806,658,2,2,https://app.example.test/api/step1/0,111,0,1
+1768471245118,100,home page-1,200,OK,Thread Group 1-2,text,true,,2348,341,2,2,https://app.example.test/api/step1/1,98,0,0
+1768471245223,52,home page-2,200,OK,Thread Group 1-2,text,true,,8202,504,2,2,https://app.example.test/api/step1/2,50,0,0
+1768471245000,277,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,16411,379,2,2,null,0,69,0
+1768471245633,306,login-0,200,OK,Thread Group 1-2,text,true,,5466,618,2,2,https://app.example.test/api/step2/0,304,0,0
+1768471245941,384,login-1,200,OK,Thread Group 1-2,text,true,,19062,326,2,2,https://app.example.test/api/step2/1,382,0,2
+1768471246329,243,login-2,200,OK,Thread Group 1-2,text,true,,18967,684,2,2,https://app.example.test/api/step2/2,241,0,3
+1768471246578,312,login-3,200,OK,Thread Group 1-2,text,true,,6598,377,2,2,https://app.example.test/api/step2/3,310,0,4
+1768471245633,1260,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,20853,2787,2,2,null,0,14,0
+1768471247341,537,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,12242,370,2,2,https://app.example.test/api/step3/0,535,0,4
+1768471247880,502,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,11281,312,2,2,https://app.example.test/api/step3/1,500,0,3
+1768471247341,1042,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,12377,2482,2,2,null,0,54,0
+1768471249084,52,search by keyword-0,200,OK,Thread Group 1-2,text,true,,5871,834,2,2,https://app.example.test/api/step4/0,50,0,5
+1768471249084,60,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,24177,926,2,2,null,0,55,0
+1768471249620,41,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,8894,630,2,2,https://app.example.test/api/step5/0,39,0,1
+1768471249620,49,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,16232,2084,2,2,null,0,75,0
+1768471249957,47,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,11123,329,2,2,https://app.example.test/api/step6/0,45,0,3
+1768471249957,55,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,19672,2799,2,2,null,0,48,0
+1768471250544,38,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,8565,648,2,2,https://app.example.test/api/step7/0,36,0,2
+1768471250544,41,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,16976,1168,2,2,null,0,45,0
+1768471251067,32,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,16109,868,2,2,https://app.example.test/api/step8/0,30,0,1
+1768471251067,36,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,3805,1288,2,2,null,0,52,0
+1768471251790,35,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,9741,526,2,2,https://app.example.test/api/step9/0,33,0,3
+1768471251790,43,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,15685,370,2,2,null,0,11,0
+1768471252282,66,logout-0,200,OK,Thread Group 1-2,text,true,,11628,764,2,2,https://app.example.test/api/step10/0,64,0,2
+1768471252356,98,logout-1,200,OK,Thread Group 1-2,text,true,,10147,557,2,2,https://app.example.test/api/step10/1,96,0,1
+1768471252282,178,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,14942,2554,2,2,null,0,42,0
+1768471254000,96,home page-0,200,OK,Thread Group 1-1,text,true,,7554,669,2,2,https://app.example.test/api/step1/0,94,0,1
+1768471254099,78,home page-1,200,OK,Thread Group 1-1,text,true,,10004,314,2,2,https://app.example.test/api/step1/1,76,0,5
+1768471254181,106,home page-2,200,OK,Thread Group 1-1,text,true,,17602,429,2,2,https://app.example.test/api/step1/2,104,0,2
+1768471254000,292,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,4294,1095,2,2,null,0,37,0
+1768471254538,384,login-0,200,OK,Thread Group 1-1,text,true,,11264,488,2,2,https://app.example.test/api/step2/0,382,0,0
+1768471254923,190,login-1,200,OK,Thread Group 1-1,text,true,,8373,789,2,2,https://app.example.test/api/step2/1,188,0,0
+1768471255116,261,login-2,200,OK,Thread Group 1-1,text,true,,2241,710,2,2,https://app.example.test/api/step2/2,259,0,3
+1768471255385,309,login-3,200,OK,Thread Group 1-1,text,true,,2527,890,2,2,https://app.example.test/api/step2/3,307,0,5
+1768471254538,1161,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,16381,2260,2,2,null,0,56,0
+1768471255953,409,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,18386,726,2,2,https://app.example.test/api/step3/0,407,0,4
+1768471256365,476,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,19633,531,2,2,https://app.example.test/api/step3/1,474,0,4
+1768471255953,893,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,3791,1316,2,2,null,0,15,0
+1768471257435,44,search by keyword-0,200,OK,Thread Group 1-1,text,true,,14151,612,2,2,https://app.example.test/api/step4/0,42,0,4
+1768471257435,52,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,15507,1517,2,2,null,0,75,0
+1768471257748,20,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,2760,460,2,2,https://app.example.test/api/step5/0,18,0,1
+1768471257748,24,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,21496,1164,2,2,null,0,33,0
+1768471258149,36,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,14862,781,2,2,https://app.example.test/api/step6/0,34,0,2
+1768471258149,38,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,6129,310,2,2,null,0,52,0
+1768471258420,31,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,19426,502,2,2,https://app.example.test/api/step7/0,29,0,3
+1768471258420,39,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,3332,1256,2,2,null,0,33,0
+1768471258776,62,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,4760,373,2,2,https://app.example.test/api/step8/0,60,0,0
+1768471258776,66,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,22221,910,2,2,null,0,34,0
+1768471259211,43,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,10064,712,2,2,https://app.example.test/api/step9/0,41,0,2
+1768471259211,48,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,15390,809,2,2,null,0,59,0
+1768471259971,50,logout-0,200,OK,Thread Group 1-1,text,true,,8304,326,2,2,https://app.example.test/api/step10/0,48,0,0
+1768471260029,51,logout-1,200,OK,Thread Group 1-1,text,true,,7601,889,2,2,https://app.example.test/api/step10/1,49,0,4
+1768471259971,116,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,25069,1620,2,2,null,0,77,0
+1768471263000,112,home page-0,200,OK,Thread Group 1-2,text,true,,9214,485,2,2,https://app.example.test/api/step1/0,110,0,4
+1768471263117,62,home page-1,200,OK,Thread Group 1-2,text,true,,14383,803,2,2,https://app.example.test/api/step1/1,60,0,0
+1768471263182,80,home page-2,200,OK,Thread Group 1-2,text,true,,15501,656,2,2,https://app.example.test/api/step1/2,78,0,3
+1768471263000,270,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,18005,2968,2,2,null,0,56,0
+1768471263811,284,login-0,200,OK,Thread Group 1-2,text,true,,8370,631,2,2,https://app.example.test/api/step2/0,282,0,0
+1768471264098,331,login-1,200,OK,Thread Group 1-2,text,true,,13344,826,2,2,https://app.example.test/api/step2/1,329,0,0
+1768471264435,225,login-2,200,OK,Thread Group 1-2,text,true,,17879,773,2,2,https://app.example.test/api/step2/2,223,0,3
+1768471264667,346,login-3,200,OK,Thread Group 1-2,text,true,,1876,492,2,2,https://app.example.test/api/step2/3,344,0,4
+1768471263811,1203,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,15903,660,2,2,null,0,40,0
+1768471265584,315,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,4393,594,2,2,https://app.example.test/api/step3/0,313,0,3
+1768471265907,318,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,15983,424,2,2,https://app.example.test/api/step3/1,316,0,0
+1768471265584,642,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,7670,1393,2,2,null,0,70,0
+1768471266671,33,search by keyword-0,200,OK,Thread Group 1-2,text,true,,7462,416,2,2,https://app.example.test/api/step4/0,31,0,3
+1768471266671,34,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,19096,1971,2,2,null,0,11,0
+1768471267025,23,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,9059,725,2,2,https://app.example.test/api/step5/0,21,0,3
+1768471267025,26,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,17330,1495,2,2,null,0,65,0
+1768471267734,50,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,4573,371,2,2,https://app.example.test/api/step6/0,48,0,2
+1768471267734,57,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,7245,2755,2,2,null,0,65,0
+1768471268415,39,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,184,589,2,2,https://app.example.test/api/step7/0,37,0,5
+1768471268415,45,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,26811,2379,2,2,null,0,34,0
+1768471268965,52,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,17748,795,2,2,https://app.example.test/api/step8/0,50,0,2
+1768471268965,60,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,29352,908,2,2,null,0,57,0
+1768471269565,28,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,7925,885,2,2,https://app.example.test/api/step9/0,26,0,3
+1768471269565,35,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,15920,1618,2,2,null,0,24,0
+1768471270039,86,logout-0,200,OK,Thread Group 1-2,text,true,,5084,807,2,2,https://app.example.test/api/step10/0,84,0,0
+1768471270131,59,logout-1,200,OK,Thread Group 1-2,text,true,,4236,814,2,2,https://app.example.test/api/step10/1,57,0,4
+1768471270039,159,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,24108,1861,2,2,null,0,49,0
+1768471272000,134,home page-0,200,OK,Thread Group 1-1,text,true,,2551,780,2,2,https://app.example.test/api/step1/0,132,0,2
+1768471272142,62,home page-1,200,OK,Thread Group 1-1,text,true,,11193,707,2,2,https://app.example.test/api/step1/1,60,0,5
+1768471272206,72,home page-2,200,OK,Thread Group 1-1,text,true,,2731,636,2,2,https://app.example.test/api/step1/2,70,0,5
+1768471272000,281,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,14434,2981,2,2,null,0,19,0
+1768471273027,286,login-0,200,OK,Thread Group 1-1,text,true,,3325,402,2,2,https://app.example.test/api/step2/0,284,0,3
+1768471273320,400,login-1,200,OK,Thread Group 1-1,text,true,,5551,606,2,2,https://app.example.test/api/step2/1,398,0,0
+1768471273728,270,login-2,200,OK,Thread Group 1-1,text,true,,1607,632,2,2,https://app.example.test/api/step2/2,268,0,0
+1768471273999,259,login-3,200,OK,Thread Group 1-1,text,true,,9713,667,2,2,https://app.example.test/api/step2/3,257,0,2
+1768471273027,1236,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,8454,670,2,2,null,0,55,0
+1768471274904,350,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,12635,546,2,2,https://app.example.test/api/step3/0,348,0,3
+1768471275257,403,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,19208,446,2,2,https://app.example.test/api/step3/1,401,0,1
+1768471274904,759,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,6570,1017,2,2,null,0,10,0
+1768471276335,44,search by keyword-0,200,OK,Thread Group 1-1,text,true,,15345,594,2,2,https://app.example.test/api/step4/0,42,0,5
+1768471276335,49,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,16059,1345,2,2,null,0,1,0
+1768471277143,34,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,8295,767,2,2,https://app.example.test/api/step5/0,32,0,2
+1768471277143,40,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,20253,1525,2,2,null,0,54,0
+1768471277586,61,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,7872,690,2,2,https://app.example.test/api/step6/0,59,0,4
+1768471277586,68,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,28962,2279,2,2,null,0,13,0
+1768471278221,9,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,9094,308,2,2,https://app.example.test/api/step7/0,7,0,4
+1768471278221,14,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,1718,2996,2,2,null,0,50,0
+1768471278485,29,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,19992,660,2,2,https://app.example.test/api/step8/0,27,0,1
+1768471278485,37,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,28290,1472,2,2,null,0,29,0
+1768471278916,29,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,1391,616,2,2,https://app.example.test/api/step9/0,27,0,3
+1768471278916,32,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,21586,697,2,2,null,0,80,0
+1768471279182,55,logout-0,200,OK,Thread Group 1-1,text,true,,6679,435,2,2,https://app.example.test/api/step10/0,53,0,4
+1768471279243,74,logout-1,200,OK,Thread Group 1-1,text,true,,12088,843,2,2,https://app.example.test/api/step10/1,72,0,4
+1768471279182,140,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,11705,2001,2,2,null,0,22,0
+1768471281000,89,home page-0,200,OK,Thread Group 1-2,text,true,,15446,377,2,2,https://app.example.test/api/step1/0,87,0,1
+1768471281092,97,home page-1,200,OK,Thread Group 1-2,text,true,,7492,706,2,2,https://app.example.test/api/step1/1,95,0,4
+1768471281197,146,home page-2,200,OK,Thread Group 1-2,text,true,,12085,392,2,2,https://app.example.test/api/step1/2,144,0,3
+1768471281000,348,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,25463,1687,2,2,null,0,14,0
+1768471281562,296,login-0,200,OK,Thread Group 1-2,text,true,,920,874,2,2,https://app.example.test/api/step2/0,294,0,2
+1768471281864,338,login-1,200,OK,Thread Group 1-2,text,true,,7353,364,2,2,https://app.example.test/api/step2/1,336,0,5
+1768471282207,179,login-2,200,OK,Thread Group 1-2,text,true,,15313,609,2,2,https://app.example.test/api/step2/2,177,0,5
+1768471282392,229,login-3,200,OK,Thread Group 1-2,text,true,,13479,419,2,2,https://app.example.test/api/step2/3,227,0,1
+1768471281562,1061,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,23113,1257,2,2,null,0,60,0
+1768471282869,480,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,4545,697,2,2,https://app.example.test/api/step3/0,478,0,3
+1768471283357,371,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,12257,853,2,2,https://app.example.test/api/step3/1,369,0,3
+1768471282869,861,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,4184,1261,2,2,null,0,68,0
+1768471284088,44,search by keyword-0,200,OK,Thread Group 1-2,text,true,,1172,679,2,2,https://app.example.test/api/step4/0,42,0,1
+1768471284088,52,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,21173,1971,2,2,null,0,35,0
+1768471284794,22,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,12136,857,2,2,https://app.example.test/api/step5/0,20,0,5
+1768471284794,30,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,8736,1785,2,2,null,0,12,0
+1768471285391,59,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,7050,321,2,2,https://app.example.test/api/step6/0,57,0,0
+1768471285391,61,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,28788,2162,2,2,null,0,11,0
+1768471285993,32,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,2348,867,2,2,https://app.example.test/api/step7/0,30,0,1
+1768471285993,36,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,5126,2612,2,2,null,0,26,0
+1768471286829,49,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,192,583,2,2,https://app.example.test/api/step8/0,47,0,1
+1768471286829,55,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,26374,904,2,2,null,0,76,0
+1768471287217,59,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,944,434,2,2,https://app.example.test/api/step9/0,57,0,0
+1768471287217,64,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,27165,1014,2,2,null,0,14,0
+1768471287847,78,logout-0,200,OK,Thread Group 1-2,text,true,,4253,731,2,2,https://app.example.test/api/step10/0,76,0,4
+1768471287931,61,logout-1,200,OK,Thread Group 1-2,text,true,,3824,365,2,2,https://app.example.test/api/step10/1,59,0,3
+1768471287847,146,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,6709,1386,2,2,null,0,6,0
+1768471290000,105,home page-0,200,OK,Thread Group 1-1,text,true,,9983,769,2,2,https://app.example.test/api/step1/0,103,0,5
+1768471290107,70,home page-1,200,OK,Thread Group 1-1,text,true,,1120,362,2,2,https://app.example.test/api/step1/1,68,0,3
+1768471290185,39,home page-2,200,OK,Thread Group 1-1,text,true,,13260,736,2,2,https://app.example.test/api/step1/2,37,0,5
+1768471290000,225,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,24830,2998,2,2,null,0,66,0
+1768471290535,295,login-0,200,OK,Thread Group 1-1,text,true,,18068,632,2,2,https://app.example.test/api/step2/0,293,0,3
+1768471290838,280,login-1,200,OK,Thread Group 1-1,text,true,,19675,843,2,2,https://app.example.test/api/step2/1,278,0,2
+1768471291120,221,login-2,200,OK,Thread Group 1-1,text,true,,14967,817,2,2,https://app.example.test/api/step2/2,219,0,4
+1768471291347,278,login-3,200,OK,Thread Group 1-1,text,true,,14196,401,2,2,https://app.example.test/api/step2/3,276,0,5
+1768471291947,376,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,13731,397,2,2,https://app.example.test/api/step3/0,374,0,2
+1768471292327,210,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,14084,620,2,2,https://app.example.test/api/step3/1,208,0,5
+1768471291947,597,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,12106,2157,2,2,null,0,51,0
+1768471293005,42,search by keyword-0,200,OK,Thread Group 1-1,text,true,,3089,387,2,2,https://app.example.test/api/step4/0,40,0,0
+1768471293005,48,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,6001,2242,2,2,null,0,8,0
+1768471293695,40,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,18502,875,2,2,https://app.example.test/api/step5/0,38,0,2
+1768471293695,43,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,19231,545,2,2,null,0,75,0
+1768471294063,61,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,9525,619,2,2,https://app.example.test/api/step6/0,59,0,2
+1768471294063,68,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,12586,2032,2,2,null,0,6,0
+1768471294437,25,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,18327,676,2,2,https://app.example.test/api/step7/0,23,0,0
+1768471294437,33,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,8348,743,2,2,null,0,44,0
+1768471294955,41,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,18343,326,2,2,https://app.example.test/api/step8/0,39,0,4
+1768471294955,45,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,27451,2057,2,2,null,0,71,0
+1768471295473,47,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,6044,446,2,2,https://app.example.test/api/step9/0,45,0,4
+1768471295473,52,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,12135,1737,2,2,null,0,0,0
+1768471296135,77,logout-0,200,OK,Thread Group 1-1,text,true,,12427,729,2,2,https://app.example.test/api/step10/0,75,0,3
+1768471296214,91,logout-1,200,OK,Thread Group 1-1,text,true,,11270,461,2,2,https://app.example.test/api/step10/1,89,0,2
+1768471296135,171,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,4006,2472,2,2,null,0,27,0
+1768471299000,127,home page-0,200,OK,Thread Group 1-2,text,true,,1730,383,2,2,https://app.example.test/api/step1/0,125,0,2
+1768471299133,105,home page-1,200,OK,Thread Group 1-2,text,true,,14619,734,2,2,https://app.example.test/api/step1/1,103,0,3
+1768471299240,68,home page-2,200,OK,Thread Group 1-2,text,true,,19992,752,2,2,https://app.example.test/api/step1/2,66,0,3
+1768471299000,309,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,6098,944,2,2,null,0,79,0
+1768471299788,319,login-0,200,OK,Thread Group 1-2,text,true,,19738,356,2,2,https://app.example.test/api/step2/0,317,0,0
+1768471300113,387,login-1,200,OK,Thread Group 1-2,text,true,,6798,608,2,2,https://app.example.test/api/step2/1,385,0,1
+1768471300507,386,login-2,200,OK,Thread Group 1-2,text,true,,4596,561,2,2,https://app.example.test/api/step2/2,384,0,2
+1768471300901,372,login-3,200,OK,Thread Group 1-2,text,true,,10851,422,2,2,https://app.example.test/api/step2/3,370,0,0
+1768471299788,1490,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,2488,1203,2,2,null,0,50,0
+1768471301987,398,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,2461,706,2,2,https://app.example.test/api/step3/0,396,0,5
+1768471302392,337,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,1486,746,2,2,https://app.example.test/api/step3/1,335,0,0
+1768471301987,746,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,17392,2588,2,2,null,0,45,0
+1768471303403,50,search by keyword-0,200,OK,Thread Group 1-2,text,true,,9586,417,2,2,https://app.example.test/api/step4/0,48,0,3
+1768471303403,57,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,19789,1956,2,2,null,0,53,0
+1768471303681,22,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,11957,390,2,2,https://app.example.test/api/step5/0,20,0,3
+1768471303681,28,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,6631,2831,2,2,null,0,58,0
+1768471304017,50,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,7360,641,2,2,https://app.example.test/api/step6/0,48,0,1
+1768471304017,52,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,13968,1570,2,2,null,0,43,0
+1768471304347,39,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,11548,659,2,2,https://app.example.test/api/step7/0,37,0,5
+1768471304347,41,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,18386,2388,2,2,null,0,24,0
+1768471304739,45,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,2569,481,2,2,https://app.example.test/api/step8/0,43,0,5
+1768471304739,49,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,6685,2767,2,2,null,0,19,0
+1768471305493,45,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,14809,878,2,2,https://app.example.test/api/step9/0,43,0,5
+1768471305493,53,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,25721,2609,2,2,null,0,74,0
+1768471306076,92,logout-0,200,OK,Thread Group 1-2,text,true,,10022,581,2,2,https://app.example.test/api/step10/0,90,0,4
+1768471306171,55,logout-1,200,OK,Thread Group 1-2,text,true,,1940,660,2,2,https://app.example.test/api/step10/1,53,0,4
+1768471306076,158,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,3237,2220,2,2,null,0,56,0
+1768471308000,89,home page-0,200,OK,Thread Group 1-1,text,true,,12698,773,2,2,https://app.example.test/api/step1/0,87,0,4
+1768471308090,125,home page-1,200,OK,Thread Group 1-1,text,true,,18263,342,2,2,https://app.example.test/api/step1/1,123,0,3
+1768471308221,104,home page-2,200,OK,Thread Group 1-1,text,true,,18832,492,2,2,https://app.example.test/api/step1/2,102,0,2
+1768471308000,327,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,21152,2733,2,2,null,0,64,0
+1768471309014,273,login-0,200,OK,Thread Group 1-1,text,true,,17272,835,2,2,https://app.example.test/api/step2/0,271,0,4
+1768471309290,379,login-1,200,OK,Thread Group 1-1,text,true,,5301,672,2,2,https://app.example.test/api/step2/1,377,0,2
+1768471309675,278,login-2,200,OK,Thread Group 1-1,text,true,,9369,696,2,2,https://app.example.test/api/step2/2,276,0,3
+1768471309955,253,login-3,200,OK,Thread Group 1-1,text,true,,11187,353,2,2,https://app.example.test/api/step2/3,251,0,5
+1768471309014,1198,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,24187,2093,2,2,null,0,56,0
+1768471310754,398,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,5027,641,2,2,https://app.example.test/api/step3/0,396,0,0
+1768471311154,338,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,19195,444,2,2,https://app.example.test/api/step3/1,336,0,2
+1768471310754,745,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,10310,1332,2,2,null,0,77,0
+1768471312016,44,search by keyword-0,200,OK,Thread Group 1-1,text,true,,10244,872,2,2,https://app.example.test/api/step4/0,42,0,3
+1768471312016,51,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,5225,2737,2,2,null,0,10,0
+1768471312603,34,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,11956,318,2,2,https://app.example.test/api/step5/0,32,0,2
+1768471312603,36,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,22168,2034,2,2,null,0,65,0
+1768471313155,32,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,6391,531,2,2,https://app.example.test/api/step6/0,30,0,1
+1768471313155,35,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,8018,1699,2,2,null,0,62,0
+1768471313548,42,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,1336,644,2,2,https://app.example.test/api/step7/0,40,0,4
+1768471313548,44,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,17635,2510,2,2,null,0,67,0
+1768471313926,55,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,5524,748,2,2,https://app.example.test/api/step8/0,53,0,0
+1768471313926,62,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,6054,964,2,2,null,0,23,0
+1768471314608,29,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,7767,846,2,2,https://app.example.test/api/step9/0,27,0,1
+1768471314608,37,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,21007,1467,2,2,null,0,57,0
+1768471315161,97,logout-0,200,OK,Thread Group 1-1,text,true,,16579,840,2,2,https://app.example.test/api/step10/0,95,0,3
+1768471315266,85,logout-1,200,OK,Thread Group 1-1,text,true,,5410,504,2,2,https://app.example.test/api/step10/1,83,0,4
+1768471315161,198,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,16128,1454,2,2,null,0,48,0
+1768471317000,90,home page-0,200,OK,Thread Group 1-2,text,true,,9440,385,2,2,https://app.example.test/api/step1/0,88,0,1
+1768471317095,127,home page-1,200,OK,Thread Group 1-2,text,true,,9038,760,2,2,https://app.example.test/api/step1/1,125,0,4
+1768471317228,109,home page-2,200,OK,Thread Group 1-2,text,true,,4928,747,2,2,https://app.example.test/api/step1/2,107,0,0
+1768471317000,339,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,24311,2413,2,2,null,0,15,0
+1768471317766,363,login-0,200,OK,Thread Group 1-2,text,true,,1023,626,2,2,https://app.example.test/api/step2/0,361,0,0
+1768471318130,157,login-1,200,OK,Thread Group 1-2,text,true,,11086,449,2,2,https://app.example.test/api/step2/1,155,0,1
+1768471318294,383,login-2,200,OK,Thread Group 1-2,text,true,,1355,593,2,2,https://app.example.test/api/step2/2,381,0,3
+1768471318681,329,login-3,200,OK,Thread Group 1-2,text,true,,4647,780,2,2,https://app.example.test/api/step2/3,327,0,3
+1768471317766,1251,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,3674,1835,2,2,null,0,28,0
+1768471319222,416,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,13969,413,2,2,https://app.example.test/api/step3/0,414,0,2
+1768471319642,389,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,7886,608,2,2,https://app.example.test/api/step3/1,387,0,0
+1768471319222,812,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,18983,2793,2,2,null,0,67,0
+1768471320282,35,search by keyword-0,200,OK,Thread Group 1-2,text,true,,19653,848,2,2,https://app.example.test/api/step4/0,33,0,0
+1768471320282,43,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,3058,754,2,2,null,0,63,0
+1768471321052,40,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,14165,301,2,2,https://app.example.test/api/step5/0,38,0,4
+1768471321052,44,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,24545,888,2,2,null,0,37,0
+1768471290535,31095,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,21457,2893,2,2,null,0,74,0
+1768471321657,50,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,17337,857,2,2,https://app.example.test/api/step6/0,48,0,4
+1768471321657,52,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,18153,1777,2,2,null,0,8,0
+1768471322428,37,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,12777,682,2,2,https://app.example.test/api/step7/0,35,0,2
+1768471322428,38,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,13794,2225,2,2,null,0,5,0
+1768471322682,42,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,3496,895,2,2,https://app.example.test/api/step8/0,40,0,5
+1768471322682,46,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,25017,2991,2,2,null,0,80,0
+1768471323268,42,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,11193,479,2,2,https://app.example.test/api/step9/0,40,0,5
+1768471323268,45,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,2452,1743,2,2,null,0,69,0
+1768471323988,96,logout-0,200,OK,Thread Group 1-2,text,true,,9715,506,2,2,https://app.example.test/api/step10/0,94,0,0
+1768471324087,72,logout-1,200,OK,Thread Group 1-2,text,true,,6636,342,2,2,https://app.example.test/api/step10/1,70,0,2
+1768471323988,174,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,3067,2174,2,2,null,0,4,0
+1768471326000,25,home page-0,200,OK,Thread Group 1-1,text,true,,9052,427,2,2,https://app.example.test/api/step1/0,23,0,2
+1768471326033,92,home page-1,200,OK,Thread Group 1-1,text,true,,14418,709,2,2,https://app.example.test/api/step1/1,90,0,5
+1768471326130,135,home page-2,200,OK,Thread Group 1-1,text,true,,14509,695,2,2,https://app.example.test/api/step1/2,133,0,2
+1768471326000,270,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,12697,495,2,2,null,0,42,0
+1768471326661,324,login-0,200,OK,Thread Group 1-1,text,true,,3461,381,2,2,https://app.example.test/api/step2/0,322,0,2
+1768471326993,274,login-1,200,OK,Thread Group 1-1,text,true,,9787,613,2,2,https://app.example.test/api/step2/1,272,0,3
+1768471327272,232,login-2,200,OK,Thread Group 1-1,text,true,,19846,736,2,2,https://app.example.test/api/step2/2,230,0,1
+1768471327506,295,login-3,200,OK,Thread Group 1-1,text,true,,14645,659,2,2,https://app.example.test/api/step2/3,293,0,3
+1768471326661,1143,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,18874,1503,2,2,null,0,41,0
+1768471328047,359,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,12004,825,2,2,https://app.example.test/api/step3/0,357,0,5
+1768471328412,319,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,5342,331,2,2,https://app.example.test/api/step3/1,317,0,1
+1768471328047,685,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,3458,2911,2,2,null,0,51,0
+1768471329380,28,search by keyword-0,200,OK,Thread Group 1-1,text,true,,12103,670,2,2,https://app.example.test/api/step4/0,26,0,3
+1768471329380,29,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,5136,575,2,2,null,0,30,0
+1768471330189,34,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,2619,887,2,2,https://app.example.test/api/step5/0,32,0,1
+1768471330189,42,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,13155,1823,2,2,null,0,56,0
+1768471330973,51,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,8279,416,2,2,https://app.example.test/api/step6/0,49,0,0
+1768471330973,57,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,14042,1587,2,2,null,0,35,0
+1768471331420,22,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,7131,592,2,2,https://app.example.test/api/step7/0,20,0,5
+1768471331420,24,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,9577,1366,2,2,null,0,57,0
+1768471332146,45,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,14912,476,2,2,https://app.example.test/api/step8/0,43,0,5
+1768471332146,49,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,5018,855,2,2,null,0,9,0
+1768471332850,58,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,18122,855,2,2,https://app.example.test/api/step9/0,56,0,2
+1768471332850,64,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,22883,1723,2,2,null,0,8,0
+1768471333421,74,logout-0,200,OK,Thread Group 1-1,text,true,,7447,424,2,2,https://app.example.test/api/step10/0,72,0,1
+1768471333498,64,logout-1,200,OK,Thread Group 1-1,text,true,,4650,542,2,2,https://app.example.test/api/step10/1,62,0,3
+1768471333421,144,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,27007,1780,2,2,null,0,65,0
+1768471335000,44,home page-0,200,OK,Thread Group 1-2,text,true,,15784,838,2,2,https://app.example.test/api/step1/0,42,0,3
+1768471335050,77,home page-1,200,OK,Thread Group 1-2,text,true,,13516,888,2,2,https://app.example.test/api/step1/1,75,0,0
+1768471335130,92,home page-2,200,OK,Thread Group 1-2,text,true,,4206,624,2,2,https://app.example.test/api/step1/2,90,0,5
+1768471335000,224,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,3154,1566,2,2,null,0,50,0
+1768471335499,192,login-0,200,OK,Thread Group 1-2,text,true,,4168,830,2,2,https://app.example.test/api/step2/0,190,0,1
+1768471335697,335,login-1,200,OK,Thread Group 1-2,text,true,,10065,468,2,2,https://app.example.test/api/step2/1,333,0,1
+1768471336035,394,login-2,200,OK,Thread Group 1-2,text,true,,10672,530,2,2,https://app.example.test/api/step2/2,392,0,2
+1768471336432,209,login-3,200,OK,Thread Group 1-2,text,true,,17103,590,2,2,https://app.example.test/api/step2/3,207,0,0
+1768471335499,1145,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,15176,2359,2,2,null,0,7,0
+1768471337100,482,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,17581,395,2,2,https://app.example.test/api/step3/0,480,0,4
+1768471337587,636,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,5625,894,2,2,https://app.example.test/api/step3/1,634,0,1
+1768471337100,1126,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,21480,1540,2,2,null,0,78,0
+1768471338601,27,search by keyword-0,200,OK,Thread Group 1-2,text,true,,1029,383,2,2,https://app.example.test/api/step4/0,25,0,0
+1768471338601,33,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,28608,2608,2,2,null,0,5,0
+1768471339424,19,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,13750,331,2,2,https://app.example.test/api/step5/0,17,0,3
+1768471339424,24,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,22336,1163,2,2,null,0,73,0
+1768471340206,42,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,14961,374,2,2,https://app.example.test/api/step6/0,40,0,5
+1768471340206,50,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,9024,1963,2,2,null,0,38,0
+1768471340517,48,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,15318,508,2,2,https://app.example.test/api/step7/0,46,0,2
+1768471340517,51,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,15404,2002,2,2,null,0,61,0
+1768471340915,38,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,16974,875,2,2,https://app.example.test/api/step8/0,36,0,0
+1768471340915,44,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,14065,835,2,2,null,0,47,0
+1768471341485,54,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,14832,553,2,2,https://app.example.test/api/step9/0,52,0,1
+1768471341485,58,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,16285,801,2,2,null,0,34,0
+1768471341842,117,logout-0,200,OK,Thread Group 1-2,text,true,,19029,620,2,2,https://app.example.test/api/step10/0,115,0,1
+1768471341966,89,logout-1,200,OK,Thread Group 1-2,text,true,,5321,810,2,2,https://app.example.test/api/step10/1,87,0,4
+1768471341842,217,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,29354,954,2,2,null,0,41,0
+1768471344000,78,home page-0,200,OK,Thread Group 1-1,text,true,,1694,351,2,2,https://app.example.test/api/step1/0,76,0,2
+1768471344079,100,home page-1,200,OK,Thread Group 1-1,text,true,,16316,781,2,2,https://app.example.test/api/step1/1,98,0,2
+1768471344181,127,home page-2,200,OK,Thread Group 1-1,text,true,,17686,308,2,2,https://app.example.test/api/step1/2,125,0,0
+1768471344000,312,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,8049,2689,2,2,null,0,45,0
+1768471344953,269,login-0,200,OK,Thread Group 1-1,text,true,,2509,695,2,2,https://app.example.test/api/step2/0,267,0,4
+1768471345225,389,login-1,200,OK,Thread Group 1-1,text,true,,14857,863,2,2,https://app.example.test/api/step2/1,387,0,2
+1768471345621,218,login-2,200,OK,Thread Group 1-1,text,true,,3993,431,2,2,https://app.example.test/api/step2/2,216,0,0
+1768471345845,323,login-3,200,OK,Thread Group 1-1,text,true,,13007,682,2,2,https://app.example.test/api/step2/3,321,0,2
+1768471344953,1219,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,12879,2566,2,2,null,0,36,0
+1768471346943,409,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,1375,440,2,2,https://app.example.test/api/step3/0,407,0,5
+1768471347358,402,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,11013,785,2,2,https://app.example.test/api/step3/1,400,0,4
+1768471346943,824,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,17386,464,2,2,null,0,5,0
+1768471348434,29,search by keyword-0,500,Internal Server Error,Thread Group 1-1,text,false,Test failed,10846,626,2,2,https://app.example.test/api/step4/0,27,0,1
+1768471348434,32,04. Search by keyword,500,"Number of samples in transaction : 1, number of failing samples : 1",Thread Group 1-1,,false,,20865,2411,2,2,null,0,17,0
+1768471349068,42,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,16802,845,2,2,https://app.example.test/api/step5/0,40,0,3
+1768471349068,47,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,20455,1677,2,2,null,0,64,0
+1768471349891,48,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,10954,412,2,2,https://app.example.test/api/step6/0,46,0,3
+1768471349891,53,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,16561,368,2,2,null,0,47,0
+1768471350741,24,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,19055,891,2,2,https://app.example.test/api/step7/0,22,0,1
+1768471350741,25,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,20559,2243,2,2,null,0,33,0
+1768471351018,67,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,12558,451,2,2,https://app.example.test/api/step8/0,65,0,5
+1768471351018,75,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,6587,2447,2,2,null,0,80,0
+1768471351541,63,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,10379,728,2,2,https://app.example.test/api/step9/0,61,0,1
+1768471351541,65,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,7251,377,2,2,null,0,56,0
+1768471352228,83,logout-0,200,OK,Thread Group 1-1,text,true,,17096,512,2,2,https://app.example.test/api/step10/0,81,0,4
+1768471352315,47,logout-1,200,OK,Thread Group 1-1,text,true,,10751,789,2,2,https://app.example.test/api/step10/1,45,0,4
+1768471352228,142,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,29600,555,2,2,null,0,17,0
+1768471353000,123,home page-0,200,OK,Thread Group 1-2,text,true,,15965,496,2,2,https://app.example.test/api/step1/0,121,0,1
+1768471353129,126,home page-1,200,OK,Thread Group 1-2,text,true,,9242,871,2,2,https://app.example.test/api/step1/1,124,0,2
+1768471353261,92,home page-2,200,OK,Thread Group 1-2,text,true,,7468,604,2,2,https://app.example.test/api/step1/2,90,0,2
+1768471353000,359,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,23146,2934,2,2,null,0,33,0
+1768471353771,268,login-0,200,OK,Thread Group 1-2,text,true,,12541,704,2,2,https://app.example.test/api/step2/0,266,0,2
+1768471354047,219,login-1,200,OK,Thread Group 1-2,text,true,,4899,597,2,2,https://app.example.test/api/step2/1,217,0,0
+1768471354272,137,login-2,200,OK,Thread Group 1-2,text,true,,9525,380,2,2,https://app.example.test/api/step2/2,135,0,2
+1768471354414,235,login-3,200,OK,Thread Group 1-2,text,true,,14595,562,2,2,https://app.example.test/api/step2/3,233,0,5
+1768471353771,883,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,4993,2648,2,2,null,0,69,0
+1768471355344,442,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,19329,545,2,2,https://app.example.test/api/step3/0,440,0,1
+1768471355791,582,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,1763,843,2,2,https://app.example.test/api/step3/1,580,0,1
+1768471355344,1034,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,5498,747,2,2,null,0,78,0
+1768471356816,43,search by keyword-0,200,OK,Thread Group 1-2,text,true,,18133,461,2,2,https://app.example.test/api/step4/0,41,0,3
+1768471356816,51,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,4294,863,2,2,null,0,0,0
+1768471357554,32,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,10624,592,2,2,https://app.example.test/api/step5/0,30,0,5
+1768471357554,40,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,22316,1116,2,2,null,0,36,0
+1768471357854,54,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,13793,480,2,2,https://app.example.test/api/step6/0,52,0,0
+1768471357854,58,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,18535,452,2,2,null,0,22,0
+1768471358518,28,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,403,605,2,2,https://app.example.test/api/step7/0,26,0,4
+1768471358518,36,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,7105,1485,2,2,null,0,4,0
+1768471358863,54,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,16284,437,2,2,https://app.example.test/api/step8/0,52,0,4
+1768471358863,62,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,22014,2525,2,2,null,0,67,0
+1768471359604,36,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,5424,769,2,2,https://app.example.test/api/step9/0,34,0,5
+1768471359604,41,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,7318,761,2,2,null,0,42,0
+1768471360108,74,logout-0,200,OK,Thread Group 1-2,text,true,,13387,737,2,2,https://app.example.test/api/step10/0,72,0,4
+1768471360188,71,logout-1,200,OK,Thread Group 1-2,text,true,,10845,388,2,2,https://app.example.test/api/step10/1,69,0,3
+1768471360108,156,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,19605,1091,2,2,null,0,22,0
+1768471362000,105,home page-0,200,OK,Thread Group 1-1,text,true,,9994,896,2,2,https://app.example.test/api/step1/0,103,0,5
+1768471362111,112,home page-1,200,OK,Thread Group 1-1,text,true,,18872,311,2,2,https://app.example.test/api/step1/1,110,0,2
+1768471362227,124,home page-2,200,OK,Thread Group 1-1,text,true,,11881,541,2,2,https://app.example.test/api/step1/2,122,0,0
+1768471362000,359,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-1,,true,,25699,1393,2,2,null,0,42,0
+1768471362680,303,login-0,200,OK,Thread Group 1-1,text,true,,4476,789,2,2,https://app.example.test/api/step2/0,301,0,1
+1768471362991,273,login-1,200,OK,Thread Group 1-1,text,true,,15008,682,2,2,https://app.example.test/api/step2/1,271,0,3
+1768471363269,371,login-2,200,OK,Thread Group 1-1,text,true,,18097,782,2,2,https://app.example.test/api/step2/2,369,0,4
+1768471363642,185,login-3,200,OK,Thread Group 1-1,text,true,,7256,553,2,2,https://app.example.test/api/step2/3,183,0,5
+1768471362680,1153,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-1,,true,,21140,1204,2,2,null,0,28,0
+1768471364116,218,"open ""work plan"" section-0",200,OK,Thread Group 1-1,text,true,,6724,886,2,2,https://app.example.test/api/step3/0,216,0,4
+1768471364342,306,"open ""work plan"" section-1",200,OK,Thread Group 1-1,text,true,,5010,468,2,2,https://app.example.test/api/step3/1,304,0,2
+1768471364116,534,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,3023,2543,2,2,null,0,64,0
+1768471365382,33,search by keyword-0,200,OK,Thread Group 1-1,text,true,,16117,393,2,2,https://app.example.test/api/step4/0,31,0,4
+1768471365382,41,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,4808,1141,2,2,null,0,74,0
+1768471366079,32,"open ""catalogs"" section-0",200,OK,Thread Group 1-1,text,true,,18410,773,2,2,https://app.example.test/api/step5/0,30,0,5
+1768471366079,39,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,15968,2609,2,2,null,0,7,0
+1768471366633,37,"open ""details"" section-0",200,OK,Thread Group 1-1,text,true,,7240,892,2,2,https://app.example.test/api/step6/0,35,0,0
+1768471366633,38,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,13974,1342,2,2,null,0,0,0
+1768471366917,19,"open ""summary reports"" section-0",200,OK,Thread Group 1-1,text,true,,9507,718,2,2,https://app.example.test/api/step7/0,17,0,1
+1768471366917,20,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,3261,2233,2,2,null,0,4,0
+1768471367275,53,"open ""settings"" section-0",200,OK,Thread Group 1-1,text,true,,12469,684,2,2,https://app.example.test/api/step8/0,51,0,0
+1768471367275,60,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,13270,1866,2,2,null,0,57,0
+1768471368087,53,"open ""profile"" section-0",200,OK,Thread Group 1-1,text,true,,17429,430,2,2,https://app.example.test/api/step9/0,51,0,5
+1768471368087,55,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-1,,true,,6848,2500,2,2,null,0,50,0
+1768471368570,102,logout-0,200,OK,Thread Group 1-1,text,true,,17530,688,2,2,https://app.example.test/api/step10/0,100,0,1
+1768471368673,77,logout-1,200,OK,Thread Group 1-1,text,true,,8210,771,2,2,https://app.example.test/api/step10/1,75,0,2
+1768471368570,188,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-1,,true,,23069,2530,2,2,null,0,54,0
+1768471371000,30,home page-0,200,OK,Thread Group 1-2,text,true,,612,546,2,2,https://app.example.test/api/step1/0,28,0,1
+1768471371035,119,home page-1,200,OK,Thread Group 1-2,text,true,,2304,403,2,2,https://app.example.test/api/step1/1,117,0,4
+1768471371156,147,home page-2,200,OK,Thread Group 1-2,text,true,,1200,757,2,2,https://app.example.test/api/step1/2,145,0,4
+1768471371000,304,01. Home page,200,"Number of samples in transaction : 3, number of failing samples : 0",Thread Group 1-2,,true,,27524,2017,2,2,null,0,78,0
+1768471371553,300,login-0,200,OK,Thread Group 1-2,text,true,,18977,626,2,2,https://app.example.test/api/step2/0,298,0,4
+1768471371861,322,login-1,200,OK,Thread Group 1-2,text,true,,19692,628,2,2,https://app.example.test/api/step2/1,320,0,1
+1768471372187,178,login-2,200,OK,Thread Group 1-2,text,true,,9988,446,2,2,https://app.example.test/api/step2/2,176,0,5
+1768471372366,268,login-3,200,OK,Thread Group 1-2,text,true,,17180,526,2,2,https://app.example.test/api/step2/3,266,0,3
+1768471371553,1084,02. Login,200,"Number of samples in transaction : 4, number of failing samples : 0",Thread Group 1-2,,true,,17511,1484,2,2,null,0,29,0
+1768471373144,379,"open ""work plan"" section-0",200,OK,Thread Group 1-2,text,true,,11385,690,2,2,https://app.example.test/api/step3/0,377,0,4
+1768471373526,525,"open ""work plan"" section-1",200,OK,Thread Group 1-2,text,true,,10544,726,2,2,https://app.example.test/api/step3/1,523,0,3
+1768471373144,914,"03. Open ""Work plan"" section",200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,19214,2330,2,2,null,0,6,0
+1768471374410,33,search by keyword-0,200,OK,Thread Group 1-2,text,true,,4830,774,2,2,https://app.example.test/api/step4/0,31,0,0
+1768471374410,41,04. Search by keyword,200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,8896,1223,2,2,null,0,38,0
+1768471375226,34,"open ""catalogs"" section-0",200,OK,Thread Group 1-2,text,true,,4493,697,2,2,https://app.example.test/api/step5/0,32,0,1
+1768471375226,41,"05. Open ""Catalogs"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,14648,2582,2,2,null,0,67,0
+1768471375728,55,"open ""details"" section-0",200,OK,Thread Group 1-2,text,true,,17651,495,2,2,https://app.example.test/api/step6/0,53,0,0
+1768471375728,63,"06. Open ""Details"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,28758,1819,2,2,null,0,11,0
+1768471376265,40,"open ""summary reports"" section-0",200,OK,Thread Group 1-2,text,true,,1395,374,2,2,https://app.example.test/api/step7/0,38,0,1
+1768471376265,47,"07. Open ""Summary reports"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,23074,2777,2,2,null,0,77,0
+1768471377084,46,"open ""settings"" section-0",200,OK,Thread Group 1-2,text,true,,6326,420,2,2,https://app.example.test/api/step8/0,44,0,5
+1768471377084,52,"08. Open ""Settings"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,10934,362,2,2,null,0,27,0
+1768471377826,46,"open ""profile"" section-0",200,OK,Thread Group 1-2,text,true,,13096,545,2,2,https://app.example.test/api/step9/0,44,0,4
+1768471377826,50,"09. Open ""Profile"" section",200,"Number of samples in transaction : 1, number of failing samples : 0",Thread Group 1-2,,true,,23794,2775,2,2,null,0,26,0
+1768471378405,77,logout-0,200,OK,Thread Group 1-2,text,true,,16394,777,2,2,https://app.example.test/api/step10/0,75,0,0
+1768471378488,56,logout-1,200,OK,Thread Group 1-2,text,true,,15484,627,2,2,https://app.example.test/api/step10/1,54,0,1
+1768471378405,144,10. Logout,200,"Number of samples in transaction : 2, number of failing samples : 0",Thread Group 1-2,,true,,9570,1773,2,2,null,0,65,0

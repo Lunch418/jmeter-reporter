@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Real test-run data: never commit it (only samples/ is allowed)
+*.jtl
+*.xlsx
+dashBoard_*.xml
+standardResults.xml
+!samples/*.jtl
+!samples/*.xlsx
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
