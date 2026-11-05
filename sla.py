@@ -101,6 +101,13 @@ def evaluate(run, sla, step_pattern=convert.DEFAULT_STEP_PATTERN):
     except re.error as exc:
         raise convert.ReportError(f"Некорректное регулярное выражение шагов: {exc}")
 
+    uses_errors = any('error_pct' in lim for lim in
+                      [sla['defaults'], sla['total'], *[o['limits'] for o in sla['overrides']]])
+    if uses_errors and not run.has_success:
+        raise convert.ReportError(
+            "В JTL нет колонки 'success': процент ошибок посчитать нельзя, а в SLA есть "
+            "error_pct. Включите jmeter.save.saveservice.successful=true или уберите error_pct.")
+
     rows = []
     for label, stats in run.labels.items():
         in_scope = sla['scope'] == 'all' or step_re.match(label)

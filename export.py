@@ -23,7 +23,7 @@ def write_csv(run, path, step_pattern=None):
             writer = csv.writer(f)
             writer.writerow(CSV_HEADERS)
             for stats in _rows(run, step_pattern):
-                writer.writerow([stats['label']] + [
+                writer.writerow([convert.csv_safe(stats['label'])] + [
                     round(stats[k], 3) if isinstance(stats[k], float) else stats[k]
                     for k in STAT_KEYS])
     except OSError as exc:

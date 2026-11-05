@@ -3,6 +3,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
+## [Unreleased]
+
+### Fixed
+- Median and percentiles round half UP like JMeter's `Math.round` (Python's `round` is
+  banker's: on 5 or 9 samples the median was one element too low).
+- Formula injection: labels and response text starting with `= + - @` stay text in Excel
+  and get a `'` prefix in CSV exports.
+- A broken JTL no longer yields silent zeros: non-numeric `timeStamp`/`elapsed` is an error
+  with a line number and a hint about `timestamp_format`; a cut-off last line is skipped with
+  a warning; a bad line in the middle is an error.
+- Encoding: no more silent replacement characters; non-UTF-8 files give a clear error,
+  `JTL_ENCODING=cp1251` reads them.
+- SLA with `error_pct` on a JTL without the `success` column is refused instead of failing.
+
 ## [1.1.0] - 2026-11-05
 
 ### Added

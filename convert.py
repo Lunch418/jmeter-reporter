@@ -10,6 +10,7 @@
 Переопределить: --tz Europe/Moscow | --tz UTC | --tz +05:00 | --tz local
 """
 import csv
+import math
 import os
 import re
 import sys
@@ -149,9 +150,47 @@ def to_int(value, default=0):
         return default
 
 
-def iter_jtl_rows(jtl_file, limit=None):
-    """Построчное чтение JTL (CSV): память не растет с размером файла."""
-    with open(jtl_file, 'r', encoding='utf-8', errors='replace', newline='') as f:
+# Кодировка JTL. JMeter пишет UTF-8; JTL с Windows-агента бывает в cp1251:
+# JTL_ENCODING=cp1251 python convert.py ...  Молчаливой подмены символов нет.
+JTL_ENCODING = os.environ.get('JTL_ENCODING', 'utf-8-sig')
+NUMERIC_REQUIRED = ('timeStamp', 'elapsed')
+FORMULA_TRIGGERS = ('=', '+', '-', '@', '\t', '\r')
+
+
+def csv_safe(value):
+    """Для CSV: строка, начинающаяся с = + - @, в Excel стала бы формулой."""
+    if isinstance(value, str) and value.startswith(FORMULA_TRIGGERS):
+        return "'" + value
+    return value
+
+
+def neutralize_formulas(ws):
+    """Ячейки, которые openpyxl принял за формулы (метка '=HYPERLINK(...)'), делает текстом."""
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.data_type == 'f':
+                cell.data_type = 's'
+
+
+def iter_jtl_rows(jtl_file, limit=None, warnings=None):
+    """Построчное чтение JTL (CSV): память не растет с размером файла.
+
+    Битые данные не превращаются в нули: нечисловой timeStamp/elapsed или строка
+    с неверным числом полей - ReportError с номером строки. Исключение одно:
+    оборванная последняя строка (JMeter убили посреди записи) пропускается
+    с предупреждением в warnings.
+    """
+    try:
+        yield from _read_rows(jtl_file, limit, warnings)
+    except UnicodeDecodeError as exc:
+        raise ReportError(
+            f"Файл '{jtl_file}' не читается как {JTL_ENCODING} (байт {exc.start}).\n"
+            f"Если JTL записан в другой кодировке, укажите ее: "
+            f"JTL_ENCODING=cp1251 python convert.py ...")
+
+
+def _read_rows(jtl_file, limit, warnings):
+    with open(jtl_file, 'r', encoding=JTL_ENCODING, newline='') as f:
         head = f.read(200)
         f.seek(0)
         if head.lstrip().startswith('<'):
@@ -160,19 +199,50 @@ def iter_jtl_rows(jtl_file, limit=None):
                 f"В JMeter выставьте jmeter.save.saveservice.output_format=csv "
                 f"и перезапустите тест."
             )
-        for index, row in enumerate(csv.DictReader(f)):
+        reader = csv.DictReader(f)
+        pending = None
+        for index, row in enumerate(reader):
+            if pending is not None:
+                yield _checked(pending, jtl_file)
             if limit is not None and index >= limit:
                 return
-            yield row
+            pending = (reader.line_num, row)
+        if pending is not None:
+            line, row = pending
+            if None in row or None in row.values():
+                if warnings is not None:
+                    warnings.append(f"последняя строка JTL (№{line}) оборвана и пропущена")
+                return
+            yield _checked(pending, jtl_file)
 
 
-def parse_jtl_file(jtl_file, limit=None):
+def _checked(pending, jtl_file):
+    line, row = pending
+    if None in row or None in row.values():
+        raise ReportError(f"{jtl_file}, строка {line}: неверное число полей в строке JTL.")
+    for field in NUMERIC_REQUIRED:
+        if field in row and not re.fullmatch(r'\s*-?\d+\s*', row[field] or ''):
+            hint = ''
+            if field == 'timeStamp':
+                hint = ("\nВероятно, jmeter.save.saveservice.timestamp_format задан не как ms: "
+                        "выставьте timestamp_format=ms (по умолчанию) и перезапустите тест.")
+            raise ReportError(
+                f"{jtl_file}, строка {line}: в колонке {field} не целое число: "
+                f"'{row[field]}'.{hint}")
+    return row
+
+
+def parse_jtl_file(jtl_file, limit=None, warnings=None):
     """Читает JTL (CSV) в список словарей. limit - максимум строк (для предпросмотра)."""
-    return list(iter_jtl_rows(jtl_file, limit))
+    return list(iter_jtl_rows(jtl_file, limit, warnings))
 
 
 def percentile(sorted_values, fraction):
     """Перцентиль по формуле JMeter: индекс round(n * p) - 1.
+
+    JMeter (StatCalculator.getPercentPoint) берет Math.round, то есть половина
+    округляется ВВЕРХ; встроенный round() в Python округляет к четному
+    (round(2.5) == 2), и на нечетном n медиана уезжала на соседний элемент.
 
     Медиана здесь - тот же самый вызов с fraction=0.5, а НЕ statistics.median():
     JMeter берёт один средний элемент, а statistics.median на чётном n
@@ -180,7 +250,7 @@ def percentile(sorted_values, fraction):
     (шаг '01. Home page': 121 у JMeter против 327 у statistics.median).
     """
     n = len(sorted_values)
-    return sorted_values[max(0, round(n * fraction) - 1)]
+    return sorted_values[max(0, math.floor(n * fraction + 0.5) - 1)]
 
 
 def average(values):
@@ -253,7 +323,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
 
     warnings = []
     if include_raw_data:
-        jtl_data = parse_jtl_file(jtl_file)
+        jtl_data = parse_jtl_file(jtl_file, warnings=warnings)
 
         if not jtl_data:
             raise ReportError(
@@ -519,6 +589,8 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
                 if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
                     value = int(value)
                 cell = ws3.cell(row=r_idx, column=col, value=value)
+                if type(value) is str and value.startswith(FORMULA_TRIGGERS):
+                    cell.data_type = 's'
                 cell.border = thin_border
 
         if truncated > 0:
@@ -527,6 +599,10 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
 
     if warnings_after:
         warnings.append(warnings_after)
+
+    for sheet in wb.worksheets:
+        if sheet.title != 'Исходные данные':
+            neutralize_formulas(sheet)
 
     try:
         wb.save(output_file)

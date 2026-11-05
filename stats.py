@@ -15,6 +15,7 @@ class Run:
         self.path = path
         self.errors = errors            # number of failed samples
         self.has_success = has_success  # the JTL has a 'success' column
+        self.notes = []  # warnings from reading (e.g. a truncated last line)
         self.rows = rows
         self.labels = labels      # label -> stats dict (same keys as convert.collect_stats)
         self.total = total
@@ -78,7 +79,8 @@ def load_run(path, limit=None):
     rows = 0
     checked = False
     has_success = True
-    for row in convert.iter_jtl_rows(str(path), limit):
+    notes = []
+    for row in convert.iter_jtl_rows(str(path), limit, notes):
         if not checked:
             missing = {'timeStamp', 'elapsed', 'label'} - set(row.keys())
             if missing:
@@ -101,5 +103,7 @@ def load_run(path, limit=None):
     if not rows:
         raise convert.ReportError(f"Не удалось прочитать данные из JTL файла '{path}' - файл пуст.")
     labels = {label: dict(_finalize(acc), label=label) for label, acc in per_label.items()}
-    return Run(str(path), rows, labels, dict(_finalize(total), label='TOTAL'),
-               total['start'], total['end'], total['errors'], has_success)
+    run = Run(str(path), rows, labels, dict(_finalize(total), label='TOTAL'),
+              total['start'], total['end'], total['errors'], has_success)
+    run.notes = notes
+    return run

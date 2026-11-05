@@ -136,7 +136,7 @@ def write_comparison_csv(cmp, path):
             for r in cmp.rows:
                 def pct(v):
                     return '' if v is None else round(v, 2)
-                writer.writerow([r['label'], r['status'], r['avg_base'], r['avg_new'],
+                writer.writerow([convert.csv_safe(r['label']), r['status'], r['avg_base'], r['avg_new'],
                                  pct(r['avg_delta']), r['p90_base'], r['p90_new'],
                                  pct(r['p90_delta']), round(r['err_base'], 3),
                                  round(r['err_new'], 3)])
@@ -233,6 +233,7 @@ def write_comparison_xlsx(cmp, path):
     for col, width in enumerate([44, 14, 14, 12, 12, 12, 10, 14, 14, 16], 1):
         ws.column_dimensions[get_column_letter(col)].width = width
     ws.freeze_panes = ws.cell(row=header_row + 1, column=2)
+    convert.neutralize_formulas(ws)
     try:
         wb.save(path)
     except OSError as exc:
