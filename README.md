@@ -1,88 +1,199 @@
-# JMeter -> Excel report
+# JMeter -> Excel
 
-Turns JMeter load test results (a `.jtl` file in CSV format, for example a
-Jenkins build artifact) into an Excel report with a summary table, a response
-time chart and the raw data.
+Превращает результаты нагрузочного тестирования JMeter (файл `.jtl`, который выдает Jenkins)
+в Excel-отчет: сводная таблица, график времени выполнения шагов, исходные данные и
+сверка расчета с цифрами самого JMeter.
 
-Two ways to use it: a **terminal UI** (pick files with the keyboard) and a
-plain **command line**.
+![Терминальный интерфейс](docs/screenshot.svg)
 
-## Install
+## Возможности
 
-Python 3.9+ is required.
+- **Терминальный интерфейс** с деревом файлов, предпросмотром и журналом. Выбирать можно
+  любую папку, XML-файлы Jenkins подхватываются сами.
+- **Предпросмотр** прямо в интерфейсе: число выборок, ошибки, длительность и таблица по
+  шагам с полосками времени. Отчет строить не нужно, чтобы понять, что за файл.
+- **Сверка с XML из Jenkins**: каждое значение сравнивается с `standardResults.xml` и
+  `dashBoard_jmeter.xml`, расхождения выносятся на отдельный лист.
+- **Формулы JMeter**: перцентили и среднее считаются так же, как в самом JMeter, поэтому
+  цифры совпадают с дашбордом.
+- **Командная строка** для автоматизации и **Docker** для запуска без установки Python.
+- Часовой пояс отчета настраивается, шаги для графика задаются регулярным выражением.
+
+## Быстрый старт
+
+### Вариант 1: Docker (ничего ставить не нужно)
+
+```bash
+./report.sh ~/Загрузки            # интерфейс на любой папке
+./report.sh                       # на текущей папке
+```
+
+Скрипт собирает образ при первом запуске и монтирует выбранную папку в контейнер как
+`/data`. Отчет появится в этой же папке с вашим владельцем. Часовой пояс берется с машины
+(можно задать так: `TZ=Europe/Moscow ./report.sh`).
+
+То же самое через Docker Compose (папка `./data` рядом с проектом):
+
+```bash
+docker compose run --rm report                        # интерфейс
+docker compose run --rm report convert /data/jmeter.jtl /data/report.xlsx
+docker compose --profile test run --rm test           # тесты
+```
+
+Без скрипта, одной командой (Linux/macOS; на Windows замените `$PWD` на путь к папке):
+
+```bash
+docker build -t jmeter-report .
+docker run --rm -it -v "$PWD:/data" jmeter-report
+```
+
+### Вариант 2: Python
+
+Нужен Python 3.9 или новее.
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate         # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python3 tui.py                    # интерфейс
 ```
 
-## Terminal UI
+## Интерфейс
 
 ```bash
-python3 tui.py                   # starts in the current directory
-python3 tui.py ~/Downloads       # or in any other directory
+python3 tui.py                    # в текущей папке
+python3 tui.py ~/Загрузки         # в любой другой
 ```
 
-- left: file tree, filtered by type (`.jtl/.csv` or all files); hidden files are not shown
-- right: input file, output `.xlsx`, time zone (list or custom), regex for chart steps
-- `Ctrl+R` or the button builds the report, `Ctrl+Q` quits, `Tab` moves between fields
-- the result (samples, errors, start/end time, duration) is shown in the log at the bottom
+Экран устроен так:
 
-## Command line
+| Область | Что делает |
+|---------|------------|
+| Строка с `>` | путь к `.jtl`; можно вписать руками или выбрать в дереве |
+| Файлы | поле `папка` (любой путь) и дерево; по умолчанию видны `.jtl .csv .xml` |
+| Параметры | куда сохранить `.xlsx`, XML для сверки, часовой пояс, шаги для графика |
+| Предпросмотр | сводка и таблица по шагам для файла, на котором стоит курсор |
+| Журнал | ход построения и итог сверки |
+
+Выбрали JTL клавишей `Enter`: имя отчета подставилось (`<имя>_report.xlsx`), а лежащие
+рядом `standardResults.xml` и `dashBoard_jmeter.xml` нашлись сами, рядом с ними написано
+"найден". XML можно выбрать и в дереве: файл попадет в нужное поле по имени.
+
+| Клавиша | Действие |
+|---------|----------|
+| `Ctrl+R` или `Enter` в поле | построить отчет |
+| `Ctrl+O` | перейти к дереву файлов |
+| `Ctrl+U` | подняться в папку выше |
+| `Ctrl+B` | сделать папку под курсором корнем дерева |
+| `Ctrl+F` | фильтр файлов: `.jtl .csv .xml` или все |
+| `Tab` / `Shift+Tab` | следующее / предыдущее поле |
+| `Ctrl+Q` | выход |
+
+Любую папку можно открыть и по пути: впишите его в поле `папка` и нажмите `Enter`
+(подходит `~`). В Docker дерево работает внутри смонтированной папки `/data`.
+
+## Командная строка
 
 ```bash
 python3 convert.py jmeter.jtl report.xlsx
-python3 convert.py jmeter.jtl report.xlsx --tz Europe/Moscow
+python3 convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx
+python3 convert.py jmeter.jtl report.xlsx --standard standardResults.xml --tz Europe/Moscow
 python3 convert.py jmeter.jtl report.xlsx --steps '^0[1-5]\.'
 ```
 
-The old four-argument form
-`convert.py jmeter.jtl dashBoard_jmeter.xml standardResults.xml report.xlsx`
-still works, but the two XML files are ignored: every number is computed from the JTL.
+| Параметр | Значение |
+|----------|----------|
+| `--tz ЗОНА` | часовой пояс меток времени: `local` (по умолчанию), `UTC`, `Europe/Moscow`, `+05:00` |
+| `--steps REGEX` | какие метки попадут на лист с графиком; по умолчанию `^\d{2}\.` (метки вида `01. Вход`) |
+| `--standard ФАЙЛ` | `standardResults.xml` для сверки |
+| `--dashboard ФАЙЛ` | `dashBoard_jmeter.xml` для сверки |
 
-| Option | Meaning |
-|--------|---------|
-| `--tz ZONE` | Time zone for timestamps: `local` (default), `UTC`, `Europe/Moscow`, `+05:00` |
-| `--steps REGEX` | Which labels go to the chart sheet. Default `^\d{2}\.` (labels like `01. Login`) |
+В четырехаргументной форме файлы берутся по позициям: `jtl dashboard standard output`.
 
-## Getting the input file from Jenkins
+## Сверка с XML из Jenkins
 
-Open the build -> Artifacts -> download the `.jtl` file (for example
-`jmeter (1).jtl`). The JTL must be CSV: set
-`jmeter.save.saveservice.output_format=csv` in JMeter. Required columns:
-`timeStamp`, `elapsed`, `label`; `success` is needed for the error rate.
+Все числа отчета считаются из JTL. Если дополнительно передать XML из Jenkins, каждое
+значение сравнивается с тем, что посчитал сам JMeter:
 
-## Report layout
+- `standardResults.xml`: samples, average, min, median, 90/95% line, max, error %
+- `dashBoard_jmeter.xml`: average, median, 90/95% line. Этот файл не является валидным XML
+  (теги вроде `<01. Home page>`), поэтому он читается отдельным разборщиком.
 
-1. **Summary** - start/end time, duration, and per label: samples, average, median,
-   90/95/99% lines, min, max, error %, throughput, received/sent KB/s, plus a TOTAL row.
-   Statistics follow JMeter's own formulas (percentile index `round(n*p)-1`,
-   integer average), so the numbers match the JMeter dashboard.
-2. **Time chart** - table and horizontal bar chart (Average and 90% Line) for the steps
-   selected by `--steps`.
-3. **Raw data** - the full JTL (cut at the Excel row limit, with a warning).
+Результат попадает на лист **Сверка**: расхождения отсортированы наверх и подсвечены, а в
+интерфейсе и в консоли печатается итог. Метки сравниваются без учета пробелов по краям.
+На реальном прогоне из 3640 строк совпали все 252 проверенных значения.
 
-## Sample data and tests
+## Откуда взять файлы
 
-The repository contains only **synthetic** data: `samples/jmeter.jtl` is produced by
-`tools/make_sample.py` (fake host `example.test`, seeded random numbers).
+Jenkins -> нужная сборка -> Artifacts. Скачайте:
+
+| Файл | Нужен ли |
+|------|----------|
+| `jmeter.jtl` (может называться `jmeter (1).jtl`) | обязательно |
+| `standardResults.xml` | для сверки |
+| `dashBoard_jmeter.xml` | для сверки |
+
+JTL должен быть в формате CSV: в JMeter включите
+`jmeter.save.saveservice.output_format=csv`. Обязательные колонки: `timeStamp`, `elapsed`,
+`label`; для процента ошибок нужна еще `success`.
+
+## Что внутри отчета
+
+1. **Сводка**: начало, конец и длительность теста; по каждой метке выборки, average, median,
+   90/95/99% line, min, max, процент ошибок, throughput, прием и отправка KB/s; строка TOTAL.
+2. **График времени**: таблица и горизонтальная диаграмма (Average и 90% Line) по шагам,
+   выбранным через `--steps`.
+3. **Сверка**: только если переданы XML.
+4. **Исходные данные**: весь JTL (обрезается по лимиту строк Excel, с предупреждением).
+
+## Тестовые данные
+
+Репозиторий содержит только **синтетические** данные: `samples/jmeter.jtl` создает
+`tools/make_sample.py` (вымышленный хост `example.test`, фиксированный seed), вместе с
+согласованными `standardResults.xml` и `dashBoard_jmeter.xml`.
 
 ```bash
-python3 tools/make_sample.py samples/jmeter.jtl      # regenerate the sample
-python3 convert.py samples/jmeter.jtl demo.xlsx --tz UTC
-
-pip install -r requirements-dev.txt
-python3 -m pytest -q --cov=convert --cov=tui --cov=tools
+python3 tools/make_sample.py samples/jmeter.jtl
+python3 convert.py samples/jmeter.jtl samples/dashBoard_jmeter.xml samples/standardResults.xml demo.xlsx
 ```
 
-Do not commit real test runs: `.gitignore` blocks `*.jtl`, `*.xlsx` and Jenkins XML
-files everywhere except `samples/`.
+Реальные прогоны в репозиторий не добавляйте: `.gitignore` закрывает `*.jtl`, `*.xlsx` и
+XML Jenkins везде, кроме `samples/`.
 
-## Troubleshooting
+## Разработка
 
-- `ModuleNotFoundError: openpyxl` / `textual` - run `pip install -r requirements.txt`
-  (inside the virtual environment).
-- "file looks like XML" - the JTL was saved as XML; switch JMeter to CSV output.
-- Wrong times - pass `--tz` (or choose the zone in the UI); the default is the local
-  time of the machine running the script.
+```bash
+pip install -r requirements-dev.txt
+python3 -m pytest -q --cov=convert --cov=tui --cov=verify --cov=preview --cov=tools
+```
+
+Или в Docker (сборка падает, если тесты не проходят):
+
+```bash
+docker build --target test .
+```
+
+Структура проекта:
+
+| Файл | Назначение |
+|------|------------|
+| `convert.py` | разбор JTL, статистика, Excel-отчет, командная строка |
+| `verify.py` | чтение XML Jenkins и сверка значений |
+| `preview.py` | быстрая сводка по файлу для предпросмотра |
+| `tui.py` | терминальный интерфейс (Textual) |
+| `tools/make_sample.py` | генератор синтетических данных |
+| `tools/make_screenshot.py` | снимок интерфейса для README |
+| `tests/` | тесты (pytest) |
+| `Dockerfile`, `docker-compose.yml`, `report.sh` | запуск в контейнере |
+
+## Если что-то не работает
+
+- `ModuleNotFoundError: openpyxl` или `textual`: выполните `pip install -r requirements.txt`
+  (в виртуальном окружении).
+- "файл похож на JTL в формате XML": JTL сохранен как XML, переключите JMeter на CSV.
+- Время в отчете не то: укажите зону (`--tz` или выбор в интерфейсе); по умолчанию берется
+  локальное время машины, в Docker это `TZ` (см. выше).
+- Интерфейс в Docker не видит нужные файлы: он показывает только смонтированную папку,
+  запустите `./report.sh <папка с файлами>`.
+- В журнале "сверка: расхождений N": откройте лист **Сверка**, строки с расхождениями
+  стоят первыми.

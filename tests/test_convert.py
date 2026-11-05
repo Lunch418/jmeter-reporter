@@ -185,16 +185,42 @@ def test_cli_short_form(sample_jtl, tmp_path, capsys):
     assert 'успешно создан' in capsys.readouterr().out
 
 
-def test_cli_legacy_four_arg_form(sample_jtl, tmp_path):
+def test_cli_legacy_four_arg_form_with_verification(sample_jtl, tmp_path, sample_xml, capsys):
+    std, dash = sample_xml
     out = tmp_path / 'legacy.xlsx'
-    convert.main([str(sample_jtl), 'a.xml', 'b.xml', str(out)])
+    convert.main([str(sample_jtl), str(dash), str(std), str(out)])
     assert out.exists()
+    assert 'Сверка с XML: расхождений нет' in capsys.readouterr().out
 
 
 def test_cli_steps_option(sample_jtl, tmp_path):
-    jtl, out, tz, steps = convert.parse_args(
+    args = convert.parse_args(
         [str(sample_jtl), str(tmp_path / 'o.xlsx'), '--steps=^01', '--tz=UTC'])
-    assert steps == '^01'
+    assert args['steps'] == '^01'
+    assert args['standard'] is None and args['dashboard'] is None
+
+
+def test_cli_four_arg_form_maps_xml_positions(sample_jtl, tmp_path):
+    dash, std = tmp_path / 'd.xml', tmp_path / 's.xml'
+    dash.write_text('x'); std.write_text('x')
+    args = convert.parse_args([str(sample_jtl), str(dash), str(std), 'o.xlsx'])
+    assert args['dashboard'] == str(dash) and args['standard'] == str(std)
+
+
+def test_cli_xml_options(sample_jtl, tmp_path):
+    std = tmp_path / 's.xml'; std.write_text('x')
+    args = convert.parse_args([str(sample_jtl), 'o.xlsx', '--standard', str(std)])
+    assert args['standard'] == str(std)
+
+
+def test_cli_missing_xml_exits(sample_jtl, tmp_path):
+    with pytest.raises(SystemExit):
+        convert.parse_args([str(sample_jtl), 'o.xlsx', '--standard', str(tmp_path / 'no.xml')])
+
+
+def test_cli_option_without_value_exits(sample_jtl):
+    with pytest.raises(SystemExit):
+        convert.parse_args([str(sample_jtl), 'o.xlsx', '--tz'])
 
 
 def test_cli_missing_file_exits(tmp_path):

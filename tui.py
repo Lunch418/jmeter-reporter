@@ -4,45 +4,97 @@
     python3 tui.py              # start in the current directory
     python3 tui.py /path/to/dir # start in a given directory
 
-Keys: Ctrl+R - build the report, Ctrl+Q - quit, Tab / Shift+Tab - move between fields.
+Keys: Ctrl+R build, Ctrl+O files, Ctrl+U folder up, Ctrl+B open folder,
+Ctrl+F file type, Tab next field, Ctrl+Q quit.
 """
 import sys
 from pathlib import Path
 
+from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.widgets import (Button, DirectoryTree, Footer, Header, Input, Label,
-                             RichLog, Select)
+from textual.theme import Theme
+from textual.widgets import DirectoryTree, Input, RichLog, Select, Static
 
 import convert
+import preview
 
-# Input file types for the file browser: label -> extensions (None = everything).
+ACCENT = '#d97757'   # the orange of Claude Code
+DIM = '#8b8b8b'
+LINE = '#3d3a37'
+OK = '#6fbf73'
+WARN = '#e5c07b'
+ERR = '#e06c75'
+
+THEME = Theme(
+    name='claude-report',
+    primary=ACCENT,
+    secondary=ACCENT,
+    accent=ACCENT,
+    background='#1b1a19',
+    surface='#232120',
+    panel='#232120',
+    foreground='#e6e1da',
+    dark=True,
+)
+
+# File types shown in the browser: key -> (label, extensions or None for everything).
 FILE_TYPES = {
-    'jtl': ('JTL / CSV (.jtl, .csv)', {'.jtl', '.csv'}),
-    'all': ('Все файлы', None),
+    'jmeter': ('.jtl .csv .xml', {'.jtl', '.csv', '.xml'}),
+    'all': ('все файлы', None),
 }
+PREVIEWABLE = {'.jtl', '.csv', '.xml'}
 
 TIMEZONES = [
-    ('Локальный (как на этой машине)', 'local'),
+    ('локальный', 'local'),
     ('UTC', 'UTC'),
-    ('Москва (Europe/Moscow)', 'Europe/Moscow'),
-    ('Екатеринбург (Asia/Yekaterinburg)', 'Asia/Yekaterinburg'),
-    ('Новосибирск (Asia/Novosibirsk)', 'Asia/Novosibirsk'),
-    ('Владивосток (Asia/Vladivostok)', 'Asia/Vladivostok'),
+    ('Москва', 'Europe/Moscow'),
+    ('Екатеринбург', 'Asia/Yekaterinburg'),
+    ('Новосибирск', 'Asia/Novosibirsk'),
+    ('Владивосток', 'Asia/Vladivostok'),
 ]
 
 
 def default_output_path(jtl_path):
-    """Рядом с входным файлом: results.jtl -> results_report.xlsx."""
+    """Next to the input: results.jtl -> results_report.xlsx."""
     jtl_path = Path(jtl_path)
     return jtl_path.with_name(f'{jtl_path.stem}_report.xlsx')
 
 
-class FileTree(DirectoryTree):
-    """Дерево каталогов: скрытые файлы не показываем, файлы фильтруем по типу."""
+def classify_xml(path):
+    """'dashboard' or 'standard' by file name (dashBoard_jmeter.xml / standardResults.xml)."""
+    return 'dashboard' if 'dash' in Path(path).name.lower() else 'standard'
 
-    extensions = FILE_TYPES['jtl'][1]
+
+def find_xml_artifacts(jtl_path):
+    """Look for the two Jenkins XML files next to the JTL. Returns (standard, dashboard)."""
+    folder = Path(jtl_path).parent
+    standard = dashboard = ''
+    try:
+        entries = sorted(folder.iterdir())
+    except OSError:
+        return standard, dashboard
+    for entry in entries:
+        name = entry.name.lower()
+        if not entry.is_file() or not name.endswith('.xml'):
+            continue
+        if name.startswith('standardresults') and not standard:
+            standard = str(entry)
+        elif name.startswith('dashboard') and not dashboard:
+            dashboard = str(entry)
+    return standard, dashboard
+
+
+class FileTree(DirectoryTree):
+    """Directory tree: hidden files are skipped, files are filtered by type."""
+
+    # Plain ASCII markers instead of the emoji icons Textual uses by default.
+    ICON_NODE = '+ '
+    ICON_NODE_EXPANDED = '- '
+    ICON_FILE = '  '
+
+    extensions = FILE_TYPES['jmeter'][1]
 
     def filter_paths(self, paths):
         result = []
@@ -57,152 +109,338 @@ class FileTree(DirectoryTree):
 
 class ReportApp(App):
     TITLE = 'JMeter -> Excel'
-    SUB_TITLE = 'отчёт по нагрузочному тестированию'
     BINDINGS = [
-        ('ctrl+r', 'build', 'Создать отчёт'),
-        ('ctrl+q', 'quit', 'Выход'),
+        ('ctrl+r', 'build', 'создать'),
+        ('ctrl+o', 'focus_files', 'файлы'),
+        ('ctrl+u', 'folder_up', 'папка выше'),
+        ('ctrl+b', 'open_folder', 'открыть папку'),
+        ('ctrl+f', 'toggle_filter', 'тип файлов'),
+        ('ctrl+q', 'quit', 'выход'),
     ]
-    CSS = """
-    #tree-pane { width: 45%; border: round $primary; }
-    #form-pane { width: 55%; padding: 0 1; }
-    #tree-title, .label { color: $text-muted; margin-top: 1; }
-    FileTree { height: 1fr; }
-    #log { height: 1fr; min-height: 8; border: round $secondary; margin-top: 1; }
-    #buttons { height: 3; margin-top: 1; }
-    Button { margin-right: 2; }
+    CSS = f"""
+    Screen {{ background: $background; padding: 0 1; }}
+
+    #header {{ height: 1; margin-top: 1; }}
+    #prompt {{ border: round {LINE}; height: 3; }}
+    #prompt:focus-within {{ border: round {ACCENT}; }}
+    #prompt-mark {{ width: 3; color: {ACCENT}; text-style: bold; padding-left: 1; }}
+
+    #columns {{ height: 1fr; }}
+    #left {{ width: 45%; min-width: 58; }}
+    #right {{ width: 1fr; margin-left: 1; }}
+
+    .panel {{ border: round {LINE}; border-title-color: {DIM}; border-title-align: left;
+              padding: 0 1; }}
+    .panel:focus-within {{ border: round {ACCENT}; border-title-color: {ACCENT}; }}
+    #files-panel {{ height: 1fr; }}
+    #params-panel {{ height: auto; }}
+    #preview-panel {{ height: 1fr; }}
+    #log-panel {{ height: 10; }}
+
+    #dir-row {{ height: 1; }}
+    FileTree {{ height: 1fr; background: transparent; padding: 0; margin-top: 1;
+                scrollbar-size-vertical: 1; }}
+    FileTree:focus {{ background: transparent; }}
+    FileTree > .tree--cursor {{ background: {ACCENT} 30%; }}
+    FileTree:focus > .tree--cursor {{ background: {ACCENT} 45%; text-style: bold; }}
+
+    .row {{ height: 1; }}
+    .key {{ width: 7; color: {DIM}; }}
+    .note {{ width: 12; min-width: 12; padding-left: 1; color: {DIM}; }}
+    Input {{ border: none; height: 1; padding: 0 1; background: $surface-lighten-1; }}
+    Input:focus {{ border: none; background: $surface-lighten-2; }}
+    Input > .input--placeholder {{ color: {DIM}; }}
+    .row Input {{ width: 1fr; }}
+    #prompt Input {{ background: transparent; }}
+    #prompt Input:focus {{ background: transparent; }}
+    #tz-custom {{ margin-left: 2; }}
+    Select {{ width: 18; height: 1; }}
+    Select > SelectCurrent {{ border: none; height: 1; padding: 0 1;
+                              background: $surface-lighten-1; }}
+    Select:focus > SelectCurrent {{ border: none; background: $surface-lighten-2; }}
+    Select > SelectOverlay {{ width: 26; }}
+
+    #preview-scroll {{ scrollbar-size-vertical: 1; }}
+    #log {{ background: transparent; scrollbar-size-vertical: 1; }}
+    #hints {{ height: 1; color: {DIM}; }}
     """
 
     def __init__(self, start_dir='.'):
         super().__init__()
         self.start_dir = Path(start_dir).expanduser().resolve()
-        self._output_touched = False  # пользователь правил путь вручную
+        self._output_touched = False  # the user edited the output path by hand
 
     # ------------------------------------------------------------ layout ----
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        with Horizontal():
-            with Vertical(id='tree-pane'):
-                yield Label('Тип файлов', id='tree-title')
-                yield Select([(label, key) for key, (label, _) in FILE_TYPES.items()],
-                             value='jtl', allow_blank=False, id='file-type')
-                yield FileTree(self.start_dir, id='tree')
-            with VerticalScroll(id='form-pane'):
-                yield Label('Входной файл JTL (выберите в дереве или впишите путь)',
-                            classes='label')
-                yield Input(placeholder='path/to/jmeter.jtl', id='jtl')
-                yield Label('Выходной файл Excel', classes='label')
-                yield Input(placeholder='report.xlsx', id='output')
-                yield Label('Часовой пояс', classes='label')
-                yield Select(TIMEZONES, value='local', allow_blank=False, id='tz')
-                yield Label('Свой пояс (необязательно: Europe/Samara, +05:00)',
-                            classes='label')
-                yield Input(placeholder='оставьте пустым, чтобы использовать список', id='tz-custom')
-                yield Label('Шаги для графика (регулярное выражение)', classes='label')
-                yield Input(value=convert.DEFAULT_STEP_PATTERN, id='steps')
-                with Horizontal(id='buttons'):
-                    yield Button('Создать отчёт', variant='success', id='build')
-                    yield Button('Выход', id='quit')
-                yield RichLog(id='log', wrap=True, markup=True)
-        yield Footer()
+        yield Static(self._header_text(), id='header')
+        with Horizontal(id='prompt'):
+            yield Static('>', id='prompt-mark')
+            yield Input(placeholder='путь к jmeter.jtl (или выберите файл в дереве)', id='jtl')
+        with Horizontal(id='columns'):
+            with Vertical(id='left'):
+                with Vertical(id='files-panel', classes='panel'):
+                    with Horizontal(id='dir-row'):
+                        yield Static('папка', classes='key')
+                        yield Input(value=str(self.start_dir), id='dir')
+                    yield FileTree(self.start_dir, id='tree')
+                with Vertical(id='params-panel', classes='panel'):
+                    with Horizontal(classes='row'):
+                        yield Static('excel', classes='key')
+                        yield Input(placeholder='report.xlsx', id='output')
+                    with Horizontal(classes='row'):
+                        yield Static('std', classes='key')
+                        yield Input(placeholder='standardResults.xml', id='standard')
+                        yield Static('', id='standard-note', classes='note')
+                    with Horizontal(classes='row'):
+                        yield Static('dash', classes='key')
+                        yield Input(placeholder='dashBoard_jmeter.xml', id='dashboard')
+                        yield Static('', id='dashboard-note', classes='note')
+                    with Horizontal(classes='row'):
+                        yield Static('tz', classes='key')
+                        yield Select(TIMEZONES, value='local', allow_blank=False, id='tz')
+                        yield Input(placeholder='свой: Europe/Samara, +05:00', id='tz-custom')
+                    with Horizontal(classes='row'):
+                        yield Static('шаги', classes='key')
+                        yield Input(value=convert.DEFAULT_STEP_PATTERN, id='steps')
+            with Vertical(id='right'):
+                with Vertical(id='preview-panel', classes='panel'):
+                    with VerticalScroll(id='preview-scroll'):
+                        yield Static(Text('Выберите файл, чтобы увидеть предпросмотр.',
+                                          style=DIM), id='preview')
+                with Vertical(id='log-panel', classes='panel'):
+                    yield RichLog(id='log', wrap=True, markup=True, highlight=False)
+        yield Static('ctrl+r создать   ctrl+o файлы   ctrl+u выше   ctrl+b открыть папку   '
+                     'ctrl+f тип   tab дальше   ctrl+q выход', id='hints')
+
+    @staticmethod
+    def _header_text():
+        text = Text()
+        text.append('* ', style=f'bold {ACCENT}')
+        text.append('JMeter -> Excel', style='bold')
+        text.append('   отчет по результатам JMeter со сверкой с XML из Jenkins', style=DIM)
+        return text
 
     def on_mount(self):
-        self.log_line(f'Каталог: {self.start_dir}')
-        self.log_line('Выберите .jtl в дереве слева и нажмите Ctrl+R.')
+        self.register_theme(THEME)
+        self.theme = 'claude-report'
+        self.query_one('#files-panel').border_title = self._files_title(FILE_TYPES['jmeter'][0])
+        self.query_one('#params-panel').border_title = 'параметры'
+        self.query_one('#preview-panel').border_title = 'предпросмотр'
+        self.query_one('#log-panel').border_title = 'журнал'
+        tree = self.query_one(FileTree)
+        tree.root.expand()
+        tree.focus()
+        self._refresh_notes()
+        self.say('Выберите .jtl в дереве (Enter) и нажмите Ctrl+R.', DIM)
+
+    @staticmethod
+    def _files_title(label):
+        return f'файлы: {label}'
 
     # ------------------------------------------------------------ events ----
-
-    @on(Select.Changed, '#file-type')
-    def _filter_changed(self, event):
-        if event.value is Select.BLANK:
-            return
-        tree = self.query_one(FileTree)
-        tree.extensions = FILE_TYPES[event.value][1]
-        tree.reload()
 
     @on(DirectoryTree.FileSelected)
     def _file_selected(self, event):
         path = Path(event.path)
+        if path.suffix.lower() == '.xml':
+            field = '#dashboard' if classify_xml(path) == 'dashboard' else '#standard'
+            self.query_one(field, Input).value = str(path)
+            self._show_preview(path)
+            return
         self.query_one('#jtl', Input).value = str(path)
         if not self._output_touched:
             self.query_one('#output', Input).value = str(default_output_path(path))
+        standard, dashboard = find_xml_artifacts(path)
+        self.query_one('#standard', Input).value = standard
+        self.query_one('#dashboard', Input).value = dashboard
+        self._show_preview(path)
+
+    @on(DirectoryTree.NodeHighlighted)
+    def _node_highlighted(self, event):
+        data = event.node.data
+        if data is not None and Path(data.path).is_file():
+            self._show_preview(Path(data.path))
+
+    @on(Input.Submitted, '#dir')
+    def _dir_submitted(self, event):
+        self._set_root(event.value)
 
     @on(Input.Changed, '#output')
     def _output_changed(self, event):
-        # Автоподстановка тоже вызывает Changed, поэтому сравниваем с ожидаемым значением.
+        # Auto-fill also triggers Changed, so compare with the expected value.
         jtl = self.query_one('#jtl', Input).value.strip()
         expected = str(default_output_path(jtl)) if jtl else ''
         self._output_touched = bool(event.value) and event.value != expected
 
-    @on(Button.Pressed, '#build')
-    def _build_pressed(self):
+    @on(Input.Changed, '#standard, #dashboard')
+    def _xml_changed(self, event):
+        self._refresh_notes()
+
+    @on(Input.Submitted, '#jtl, #output, #standard, #dashboard, #tz-custom, #steps')
+    def _submitted(self, event):
         self.action_build()
 
-    @on(Button.Pressed, '#quit')
-    def _quit_pressed(self):
-        self.exit()
+    # ----------------------------------------------------------- folders ----
+
+    def _set_root(self, raw):
+        """Show another directory in the tree (any path on the machine)."""
+        raw = (raw or '').strip()
+        if not raw:
+            return
+        path = Path(raw).expanduser()
+        if not path.is_dir():
+            self.headline(f'Папка не найдена: {raw}', ERR)
+            return
+        path = path.resolve()
+        tree = self.query_one(FileTree)
+        tree.path = path
+        tree.reload()
+        tree.root.expand()
+        self.start_dir = path
+        self.query_one('#dir', Input).value = str(path)
+        tree.focus()
+
+    def action_folder_up(self):
+        self._set_root(str(self.start_dir.parent))
+
+    def action_open_folder(self):
+        """Make the highlighted folder the root of the tree."""
+        node = self.query_one(FileTree).cursor_node
+        data = node.data if node is not None else None
+        if data is not None and Path(data.path).is_dir():
+            self._set_root(str(data.path))
+
+    # ----------------------------------------------------------- preview ----
+
+    def _show_preview(self, path):
+        if path.suffix.lower() not in PREVIEWABLE:
+            return
+        steps = self.query_one('#steps', Input).value.strip() or convert.DEFAULT_STEP_PATTERN
+        self._preview_worker(str(path), steps)
+
+    @work(thread=True, exclusive=True, group='preview')
+    def _preview_worker(self, path, steps):
+        try:
+            if path.lower().endswith('.xml'):
+                info = preview.summarize_xml(path)
+                renderable = preview.render_xml_summary(info, DIM)
+            else:
+                info = preview.summarize_jtl(path, step_pattern=steps)
+                renderable = preview.render_summary(info, ACCENT, DIM, OK, ERR)
+        except convert.ReportError as exc:
+            renderable = Text(f'Не удается показать файл: {exc}', style=WARN)
+        except Exception as exc:  # a broken file must not kill the UI
+            renderable = Text(f'Не удается показать файл: {type(exc).__name__}: {exc}',
+                              style=WARN)
+        self.call_from_thread(self.query_one('#preview', Static).update, renderable)
 
     # ----------------------------------------------------------- actions ----
 
-    def log_line(self, text):
-        self.query_one('#log', RichLog).write(text)
+    def _refresh_notes(self):
+        for name in ('standard', 'dashboard'):
+            value = self.query_one(f'#{name}', Input).value.strip()
+            note = self.query_one(f'#{name}-note', Static)
+            if not value:
+                note.update(Text('без сверки', style=DIM))
+            elif Path(value).expanduser().is_file():
+                note.update(Text('найден', style=OK))
+            else:
+                note.update(Text('не найден', style=ERR))
+
+    def action_focus_files(self):
+        self.query_one(FileTree).focus()
+
+    def action_toggle_filter(self):
+        tree = self.query_one(FileTree)
+        key = 'all' if tree.extensions is not None else 'jmeter'
+        tree.extensions = FILE_TYPES[key][1]
+        tree.reload()
+        self.query_one('#files-panel').border_title = self._files_title(FILE_TYPES[key][0])
+
+    def say(self, text, color=None, bullet='-'):
+        line = Text()
+        line.append(f'{bullet} ', style=color or '')
+        line.append(text, style=color or '')
+        self.query_one('#log', RichLog).write(line)
+
+    def headline(self, text, color):
+        line = Text()
+        line.append('* ', style=f'bold {color}')
+        line.append(text, style='bold')
+        self.query_one('#log', RichLog).write(line)
 
     def action_build(self):
         jtl = self.query_one('#jtl', Input).value.strip()
         output = self.query_one('#output', Input).value.strip()
+        standard = self.query_one('#standard', Input).value.strip()
+        dashboard = self.query_one('#dashboard', Input).value.strip()
         custom_tz = self.query_one('#tz-custom', Input).value.strip()
         tz_value = custom_tz or self.query_one('#tz', Select).value
         steps = self.query_one('#steps', Input).value.strip() or convert.DEFAULT_STEP_PATTERN
 
         if not jtl:
-            self.log_line('[red]Не выбран входной файл.[/red]')
+            self.headline('Не выбран входной файл', ERR)
             return
         if not Path(jtl).expanduser().is_file():
-            self.log_line(f'[red]Файл не найден: {jtl}[/red]')
+            self.headline(f'Файл не найден: {jtl}', ERR)
             return
+        for label, path in (('standardResults.xml', standard), ('dashBoard_jmeter.xml', dashboard)):
+            if path and not Path(path).expanduser().is_file():
+                self.headline(f'{label} не найден: {path}', ERR)
+                return
         if not output:
             output = str(default_output_path(jtl))
             self.query_one('#output', Input).value = output
         if not output.lower().endswith('.xlsx'):
-            self.log_line('[red]Выходной файл должен иметь расширение .xlsx[/red]')
+            self.headline('Выходной файл должен иметь расширение .xlsx', ERR)
             return
         try:
             tz = convert.resolve_timezone(str(tz_value))
-            self._run_build(str(Path(jtl).expanduser()), str(Path(output).expanduser()),
-                            tz, steps)
         except convert.ReportError as exc:
-            self.log_line(f'[red]{exc}[/red]')
+            self.headline(str(exc).splitlines()[0], ERR)
+            return
 
-    def _run_build(self, jtl, output, tz, steps):
-        self.query_one('#build', Button).disabled = True
-        self.log_line(f'Обработка {jtl} ...')
-        self._build_worker(jtl, output, tz, steps)
+        self.headline('Строю отчет...', ACCENT)
+        self._build_worker(
+            str(Path(jtl).expanduser()), str(Path(output).expanduser()), tz, steps,
+            str(Path(standard).expanduser()) if standard else None,
+            str(Path(dashboard).expanduser()) if dashboard else None)
 
-    @work(thread=True, exclusive=True)
-    def _build_worker(self, jtl, output, tz, steps):
+    @work(thread=True, exclusive=True, group='build')
+    def _build_worker(self, jtl, output, tz, steps, standard, dashboard):
         try:
-            info = convert.create_excel_report(jtl, output, tz=tz, step_pattern=steps)
+            info = convert.create_excel_report(
+                jtl, output, tz=tz, step_pattern=steps,
+                standard_xml=standard, dashboard_xml=dashboard)
         except convert.ReportError as exc:
             self.call_from_thread(self._build_failed, str(exc))
-        except Exception as exc:  # неожиданная ошибка не должна ронять интерфейс
+        except Exception as exc:  # an unexpected error must not kill the UI
             self.call_from_thread(self._build_failed, f'{type(exc).__name__}: {exc}')
         else:
             self.call_from_thread(self._build_done, info)
 
     def _build_failed(self, message):
-        self.query_one('#build', Button).disabled = False
-        self.log_line(f'[red]Ошибка: {message}[/red]')
+        self.headline('Ошибка', ERR)
+        for line in message.splitlines():
+            self.say(line, ERR)
 
     def _build_done(self, info):
-        self.query_one('#build', Button).disabled = False
-        self.log_line(f'[green]Готово: {info["output"]}[/green]')
-        self.log_line(f'  Выборок: {info["rows"]}, меток: {info["labels"]}, '
-                      f'шагов на графике: {info["steps"]}, ошибок: {info["errors"]}')
-        self.log_line(f'  Начало: {info["start"]} ({info["timezone"]})')
-        self.log_line(f'  Конец:  {info["end"]}')
-        self.log_line(f'  Длительность: {info["duration"]}')
+        self.say(f'выборок: {info["rows"]}, меток: {info["labels"]}, '
+                 f'шагов на графике: {info["steps"]}, ошибок: {info["errors"]}', DIM)
+        self.say(f'{info["start"]} -> {info["end"]} ({info["timezone"]}), {info["duration"]}', DIM)
+        check = info['verification']
+        if check is None:
+            self.say('XML не указаны: сверка не выполнялась', DIM)
+        elif check['ok']:
+            self.say(f'сверка с XML: все {check["checked"]} значений совпали', OK)
+        else:
+            self.say(f'сверка с XML: расхождений {check["mismatches"]} из {check["checked"]} '
+                     f'(см. лист "Сверка")', WARN)
         for warning in info['warnings']:
-            self.log_line(f'[yellow]Внимание: {warning}[/yellow]')
+            if not warning.startswith('сверка'):
+                self.say(f'внимание: {warning}', WARN)
+        self.headline(f'Готово: {info["output"]}', OK)
 
 
 def main(argv=None):

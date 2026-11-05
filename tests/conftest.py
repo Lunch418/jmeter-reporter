@@ -16,3 +16,12 @@ def sample_jtl(tmp_path):
     path = tmp_path / 'sample.jtl'
     make_sample.write_jtl(path, iterations=6, seed=1)
     return path
+
+
+@pytest.fixture
+def sample_xml(sample_jtl, tmp_path):
+    """standardResults.xml и dashBoard_jmeter.xml, согласованные с sample_jtl."""
+    import make_sample
+    std, dash = tmp_path / 'standardResults.xml', tmp_path / 'dashBoard_jmeter.xml'
+    make_sample.write_xml(sample_jtl, std, dash)
+    return std, dash

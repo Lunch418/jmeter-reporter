@@ -21,6 +21,8 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, Reference
 
+import verify
+
 # Лимит строк листа Excel (xlsx). Лист 'Исходные данные' обрезается по нему,
 # иначе openpyxl падает на большом JTL уже в момент сохранения.
 EXCEL_MAX_ROWS = 1_048_576
@@ -126,7 +128,8 @@ def to_int(value, default=0):
         return default
 
 
-def parse_jtl_file(jtl_file):
+def parse_jtl_file(jtl_file, limit=None):
+    """Читает JTL (CSV) в список словарей. limit - максимум строк (для предпросмотра)."""
     with open(jtl_file, 'r', encoding='utf-8', errors='replace', newline='') as f:
         head = f.read(200)
         f.seek(0)
@@ -136,7 +139,10 @@ def parse_jtl_file(jtl_file):
                 f"В JMeter выставьте jmeter.save.saveservice.output_format=csv "
                 f"и перезапустите тест."
             )
-        return list(csv.DictReader(f))
+        reader = csv.DictReader(f)
+        if limit is None:
+            return list(reader)
+        return [row for _, row in zip(range(limit), reader)]
 
 
 def percentile(sorted_values, fraction):
@@ -193,7 +199,8 @@ def collect_stats(rows):
 
 # ---------------------------------------------------------------- отчёт ----
 
-def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN):
+def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN,
+                        standard_xml=None, dashboard_xml=None):
     """Строит xlsx-отчёт. Возвращает словарь со сводкой (для CLI и UI)."""
     jtl_data = parse_jtl_file(jtl_file)
 
@@ -218,6 +225,23 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
 
     stats = [dict(collect_stats(rows), label=label) for label, rows in grouped.items()]
     total_stats = collect_stats(jtl_data)
+
+    # Сверка с XML-артефактами Jenkins (необязательная).
+    check_rows = []
+    if standard_xml:
+        check_rows += verify.compare(
+            stats, verify.parse_standard_results(standard_xml, ReportError),
+            'standardResults.xml')
+    if dashboard_xml:
+        check_rows += verify.compare(
+            stats, verify.parse_dashboard(dashboard_xml, ReportError),
+            'dashBoard_jmeter.xml')
+    check = verify.summarize(check_rows) if (standard_xml or dashboard_xml) else None
+    if check and not check['ok']:
+        warnings_after = (f"сверка с XML: {check['mismatches']} расхождений из "
+                          f"{check['checked']} (см. лист 'Сверка')")
+    else:
+        warnings_after = None
 
     # min/max, а не первая и последняя строка файла: JMeter пишет строки
     # в порядке ЗАВЕРШЕНИЯ замеров, поэтому при нескольких потоках последняя
@@ -371,6 +395,40 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
                    for r in range(HEADER_ROW, r_idx)]
         ws2.column_dimensions[get_column_letter(col)].width = min(max(lengths or [8]) + 2, 30)
 
+    # ================= ЛИСТ: СВЕРКА С XML =================
+    if check_rows:
+        ws_check = wb.create_sheet('Сверка')
+        ws_check['A1'] = 'Сверка расчёта по JTL с артефактами Jenkins'
+        ws_check['A1'].font = header_font_bold_16
+        ws_check.merge_cells('A1:F1')
+        verdict = ('Расхождений нет' if check['ok']
+                   else f"Расхождений: {check['mismatches']} из {check['checked']}")
+        ws_check['A2'] = f"Проверено значений: {check['checked']}. {verdict}."
+        ws_check['A2'].font = header_font_bold_11
+        bad_fill = PatternFill(start_color='F8CBAD', end_color='F8CBAD', fill_type='solid')
+        ok_fill = PatternFill(start_color='E2F0D9', end_color='E2F0D9', fill_type='solid')
+        check_headers = ['Label', 'Метрика', 'Источник', 'В XML', 'Посчитано по JTL', 'Результат']
+        for col, header in enumerate(check_headers, 1):
+            cell = ws_check.cell(row=4, column=col, value=header)
+            cell.font = header_font_white
+            cell.fill = header_fill_blue
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal='center')
+        # Расхождения наверх, чтобы их не пришлось искать.
+        for r, row in enumerate(sorted(check_rows, key=lambda x: x['ok']), start=5):
+            if row['actual'] is None:
+                result = 'нет в JTL'
+            else:
+                result = 'OK' if row['ok'] else 'РАСХОЖДЕНИЕ'
+            values = [row['label'], row['metric'], row['source'], row['expected'],
+                      row['actual'] if row['actual'] is not None else '', result]
+            for col, val in enumerate(values, 1):
+                cell = ws_check.cell(row=r, column=col, value=val)
+                cell.border = thin_border
+                cell.fill = ok_fill if row['ok'] else bad_fill
+        for col, width in enumerate([42, 14, 22, 12, 18, 14], 1):
+            ws_check.column_dimensions[get_column_letter(col)].width = width
+
     # ================= ЛИСТ 3: ИСХОДНЫЕ ДАННЫЕ =================
     ws3 = wb.create_sheet('Исходные данные')
     raw_headers = list(jtl_data[0].keys())
@@ -400,6 +458,9 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
         warnings.append(f"лист 'Исходные данные' обрезан: {truncated} строк "
                         f"не поместились в лимит Excel ({EXCEL_MAX_ROWS} строк)")
 
+    if warnings_after:
+        warnings.append(warnings_after)
+
     try:
         wb.save(output_file)
     except OSError as exc:
@@ -417,6 +478,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
         'start': start_time,
         'end': end_time,
         'duration': duration_str,
+        'verification': check,
         'warnings': warnings,
     }
 
@@ -429,6 +491,9 @@ USAGE = (
     "  python3 convert.py jmeter.jtl report.xlsx\n"
     "\n"
     "Опции:\n"
+    "  --standard F   standardResults.xml: сверить расчёт с цифрами JMeter.\n"
+    "  --dashboard F  dashBoard_jmeter.xml: то же, по average/median/90/95.\n"
+    "                 (в четырёхаргументной форме оба файла берутся из позиций)\n"
     "  --steps RE  Регулярное выражение для шагов на листе 'График времени'.\n"
     "              По умолчанию '^\\d{2}\\.' (метки вида '01. ...').\n"
     "  --tz ПОЯС   Часовой пояс для меток времени в отчёте.\n"
@@ -437,9 +502,13 @@ USAGE = (
 )
 
 
+VALUE_OPTIONS = ('--tz', '--steps', '--standard', '--dashboard')
+
+
 def parse_args(argv):
-    tz_spec = None
-    steps = DEFAULT_STEP_PATTERN
+    """Разбор командной строки. Возвращает словарь параметров."""
+    options = {'--tz': None, '--steps': DEFAULT_STEP_PATTERN,
+               '--standard': None, '--dashboard': None}
     positional = []
     i = 0
     while i < len(argv):
@@ -447,51 +516,51 @@ def parse_args(argv):
         if arg in ('-h', '--help'):
             print(USAGE)
             sys.exit(0)
-        elif arg == '--tz':
-            if i + 1 >= len(argv):
-                sys.exit("Ошибка: у --tz не указано значение.\n\n" + USAGE)
-            tz_spec = argv[i + 1]
-            i += 2
-        elif arg == '--steps':
-            if i + 1 >= len(argv):
-                sys.exit("Ошибка: у --steps не указано значение.\n\n" + USAGE)
-            steps = argv[i + 1]
-            i += 2
-        elif arg.startswith('--steps='):
-            steps = arg[len('--steps='):]
-            i += 1
-        elif arg.startswith('--tz='):
-            tz_spec = arg[len('--tz='):]
-            i += 1
+        name, eq, inline = arg.partition('=')
+        if name in VALUE_OPTIONS:
+            if eq:
+                options[name] = inline
+                i += 1
+            elif i + 1 < len(argv):
+                options[name] = argv[i + 1]
+                i += 2
+            else:
+                sys.exit(f"Ошибка: у {name} не указано значение.\n\n" + USAGE)
         else:
             positional.append(arg)
             i += 1
 
-    # Поддерживаются обе формы вызова: короткая и историческая четырёхаргументная.
-    # dashBoard_jmeter.xml и standardResults.xml скриптом не используются -
-    # все цифры отчёта считаются из JTL, - но команда из README продолжает работать.
+    # Две формы вызова: короткая (jtl, xlsx) и историческая четырёхаргументная
+    # (jtl, dashBoard_jmeter.xml, standardResults.xml, xlsx). XML используются
+    # для сверки расчёта с цифрами JMeter.
     if len(positional) == 2:
         jtl_file, output_file = positional
     elif len(positional) == 4:
-        jtl_file, _dashboard_xml, _standard_xml, output_file = positional
+        jtl_file, dashboard, standard, output_file = positional
+        options['--dashboard'] = options['--dashboard'] or dashboard
+        options['--standard'] = options['--standard'] or standard
     else:
         sys.exit(USAGE)
 
-    if not os.path.isfile(jtl_file):
-        sys.exit(f"Файл не найден: '{jtl_file}'")
+    for path in (jtl_file, options['--standard'], options['--dashboard']):
+        if path and not os.path.isfile(path):
+            sys.exit(f"Файл не найден: '{path}'")
 
     try:
-        tz = resolve_timezone(tz_spec)
+        tz = resolve_timezone(options['--tz'])
     except ReportError as exc:
         sys.exit(str(exc))
-    return jtl_file, output_file, tz, steps
+    return {'jtl': jtl_file, 'output': output_file, 'tz': tz,
+            'steps': options['--steps'], 'standard': options['--standard'],
+            'dashboard': options['--dashboard']}
 
 
 def main(argv=None):
-    jtl_path, output_path, timezone_obj, steps = parse_args(
-        sys.argv[1:] if argv is None else argv)
+    args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
-        info = create_excel_report(jtl_path, output_path, tz=timezone_obj, step_pattern=steps)
+        info = create_excel_report(
+            args['jtl'], args['output'], tz=args['tz'], step_pattern=args['steps'],
+            standard_xml=args['standard'], dashboard_xml=args['dashboard'])
     except ReportError as exc:
         sys.exit(str(exc))
     for warning in info['warnings']:
@@ -500,6 +569,10 @@ def main(argv=None):
     print(f"   Листы: {', '.join(info['sheets'])}")
     print(f"   Строк данных: {info['rows']}")
     print(f"   Время в отчёте: {info['timezone']}")
+    if info['verification']:
+        v = info['verification']
+        print(f"   Сверка с XML: {'расхождений нет' if v['ok'] else str(v['mismatches']) + ' расхождений'}"
+              f" (проверено {v['checked']})")
 
 
 if __name__ == '__main__':

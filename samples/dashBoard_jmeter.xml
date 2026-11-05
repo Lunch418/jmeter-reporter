@@ -1,0 +1,338 @@
+<?xml version="1.0"?>
+<results>
+<absoluteDefinition>
+	<unstable>-1</unstable>
+	<failed>-1</failed>
+	<calculated>0.0</calculated>
+</absoluteDefinition>
+<average>
+	<home page-0>
+		<currentBuildAvg>88</currentBuildAvg>
+	</home page-0>
+	<home page-1>
+		<currentBuildAvg>99</currentBuildAvg>
+	</home page-1>
+	<home page-2>
+		<currentBuildAvg>98</currentBuildAvg>
+	</home page-2>
+	<01. Home page>
+		<currentBuildAvg>298</currentBuildAvg>
+	</01. Home page>
+	<login-0>
+		<currentBuildAvg>310</currentBuildAvg>
+	</login-0>
+	<login-1>
+		<currentBuildAvg>302</currentBuildAvg>
+	</login-1>
+	<login-2>
+		<currentBuildAvg>272</currentBuildAvg>
+	</login-2>
+	<login-3>
+		<currentBuildAvg>288</currentBuildAvg>
+	</login-3>
+	<02. Login>
+		<currentBuildAvg>2691</currentBuildAvg>
+	</02. Login>
+	<open "work plan" section-0>
+		<currentBuildAvg>404</currentBuildAvg>
+	</open "work plan" section-0>
+	<open "work plan" section-1>
+		<currentBuildAvg>393</currentBuildAvg>
+	</open "work plan" section-1>
+	<03. Open "Work plan" section>
+		<currentBuildAvg>807</currentBuildAvg>
+	</03. Open "Work plan" section>
+	<search by keyword-0>
+		<currentBuildAvg>37</currentBuildAvg>
+	</search by keyword-0>
+	<04. Search by keyword>
+		<currentBuildAvg>42</currentBuildAvg>
+	</04. Search by keyword>
+	<open "catalogs" section-0>
+		<currentBuildAvg>31</currentBuildAvg>
+	</open "catalogs" section-0>
+	<05. Open "Catalogs" section>
+		<currentBuildAvg>36</currentBuildAvg>
+	</05. Open "Catalogs" section>
+	<open "details" section-0>
+		<currentBuildAvg>48</currentBuildAvg>
+	</open "details" section-0>
+	<06. Open "Details" section>
+		<currentBuildAvg>53</currentBuildAvg>
+	</06. Open "Details" section>
+	<open "summary reports" section-0>
+		<currentBuildAvg>30</currentBuildAvg>
+	</open "summary reports" section-0>
+	<07. Open "Summary reports" section>
+		<currentBuildAvg>34</currentBuildAvg>
+	</07. Open "Summary reports" section>
+	<open "settings" section-0>
+		<currentBuildAvg>44</currentBuildAvg>
+	</open "settings" section-0>
+	<08. Open "Settings" section>
+		<currentBuildAvg>50</currentBuildAvg>
+	</08. Open "Settings" section>
+	<open "profile" section-0>
+		<currentBuildAvg>42</currentBuildAvg>
+	</open "profile" section-0>
+	<09. Open "Profile" section>
+		<currentBuildAvg>47</currentBuildAvg>
+	</09. Open "Profile" section>
+	<logout-0>
+		<currentBuildAvg>77</currentBuildAvg>
+	</logout-0>
+	<logout-1>
+		<currentBuildAvg>74</currentBuildAvg>
+	</logout-1>
+	<10. Logout>
+		<currentBuildAvg>161</currentBuildAvg>
+	</10. Logout>
+</average>
+<median>
+	<home page-0>
+		<currentBuildMed>90</currentBuildMed>
+	</home page-0>
+	<home page-1>
+		<currentBuildMed>100</currentBuildMed>
+	</home page-1>
+	<home page-2>
+		<currentBuildMed>100</currentBuildMed>
+	</home page-2>
+	<01. Home page>
+		<currentBuildMed>304</currentBuildMed>
+	</01. Home page>
+	<login-0>
+		<currentBuildMed>300</currentBuildMed>
+	</login-0>
+	<login-1>
+		<currentBuildMed>309</currentBuildMed>
+	</login-1>
+	<login-2>
+		<currentBuildMed>261</currentBuildMed>
+	</login-2>
+	<login-3>
+		<currentBuildMed>278</currentBuildMed>
+	</login-3>
+	<02. Login>
+		<currentBuildMed>1198</currentBuildMed>
+	</02. Login>
+	<open "work plan" section-0>
+		<currentBuildMed>398</currentBuildMed>
+	</open "work plan" section-0>
+	<open "work plan" section-1>
+		<currentBuildMed>389</currentBuildMed>
+	</open "work plan" section-1>
+	<03. Open "Work plan" section>
+		<currentBuildMed>785</currentBuildMed>
+	</03. Open "Work plan" section>
+	<search by keyword-0>
+		<currentBuildMed>35</currentBuildMed>
+	</search by keyword-0>
+	<04. Search by keyword>
+		<currentBuildMed>43</currentBuildMed>
+	</04. Search by keyword>
+	<open "catalogs" section-0>
+		<currentBuildMed>32</currentBuildMed>
+	</open "catalogs" section-0>
+	<05. Open "Catalogs" section>
+		<currentBuildMed>37</currentBuildMed>
+	</05. Open "Catalogs" section>
+	<open "details" section-0>
+		<currentBuildMed>50</currentBuildMed>
+	</open "details" section-0>
+	<06. Open "Details" section>
+		<currentBuildMed>53</currentBuildMed>
+	</06. Open "Details" section>
+	<open "summary reports" section-0>
+		<currentBuildMed>31</currentBuildMed>
+	</open "summary reports" section-0>
+	<07. Open "Summary reports" section>
+		<currentBuildMed>36</currentBuildMed>
+	</07. Open "Summary reports" section>
+	<open "settings" section-0>
+		<currentBuildMed>45</currentBuildMed>
+	</open "settings" section-0>
+	<08. Open "Settings" section>
+		<currentBuildMed>49</currentBuildMed>
+	</08. Open "Settings" section>
+	<open "profile" section-0>
+		<currentBuildMed>42</currentBuildMed>
+	</open "profile" section-0>
+	<09. Open "Profile" section>
+		<currentBuildMed>46</currentBuildMed>
+	</09. Open "Profile" section>
+	<logout-0>
+		<currentBuildMed>77</currentBuildMed>
+	</logout-0>
+	<logout-1>
+		<currentBuildMed>74</currentBuildMed>
+	</logout-1>
+	<10. Logout>
+		<currentBuildMed>156</currentBuildMed>
+	</10. Logout>
+</median>
+<percentile>
+	<home page-0>
+		<currentBuild90Line>123</currentBuild90Line>
+	</home page-0>
+	<home page-0>
+		<currentBuild95Line>127</currentBuild95Line>
+	</home page-0>
+	<home page-1>
+		<currentBuild90Line>126</currentBuild90Line>
+	</home page-1>
+	<home page-1>
+		<currentBuild95Line>127</currentBuild95Line>
+	</home page-1>
+	<home page-2>
+		<currentBuild90Line>135</currentBuild90Line>
+	</home page-2>
+	<home page-2>
+		<currentBuild95Line>146</currentBuild95Line>
+	</home page-2>
+	<01. Home page>
+		<currentBuild90Line>348</currentBuild90Line>
+	</01. Home page>
+	<01. Home page>
+		<currentBuild95Line>359</currentBuild95Line>
+	</01. Home page>
+	<login-0>
+		<currentBuild90Line>384</currentBuild90Line>
+	</login-0>
+	<login-0>
+		<currentBuild95Line>385</currentBuild95Line>
+	</login-0>
+	<login-1>
+		<currentBuild90Line>387</currentBuild90Line>
+	</login-1>
+	<login-1>
+		<currentBuild95Line>389</currentBuild95Line>
+	</login-1>
+	<login-2>
+		<currentBuild90Line>386</currentBuild90Line>
+	</login-2>
+	<login-2>
+		<currentBuild95Line>394</currentBuild95Line>
+	</login-2>
+	<login-3>
+		<currentBuild90Line>372</currentBuild90Line>
+	</login-3>
+	<login-3>
+		<currentBuild95Line>383</currentBuild95Line>
+	</login-3>
+	<02. Login>
+		<currentBuild90Line>1428</currentBuild90Line>
+	</02. Login>
+	<02. Login>
+		<currentBuild95Line>1490</currentBuild95Line>
+	</02. Login>
+	<open "work plan" section-0>
+		<currentBuild90Line>482</currentBuild90Line>
+	</open "work plan" section-0>
+	<open "work plan" section-0>
+		<currentBuild95Line>537</currentBuild95Line>
+	</open "work plan" section-0>
+	<open "work plan" section-1>
+		<currentBuild90Line>525</currentBuild90Line>
+	</open "work plan" section-1>
+	<open "work plan" section-1>
+		<currentBuild95Line>582</currentBuild95Line>
+	</open "work plan" section-1>
+	<03. Open "Work plan" section>
+		<currentBuild90Line>1034</currentBuild90Line>
+	</03. Open "Work plan" section>
+	<03. Open "Work plan" section>
+		<currentBuild95Line>1042</currentBuild95Line>
+	</03. Open "Work plan" section>
+	<search by keyword-0>
+		<currentBuild90Line>44</currentBuild90Line>
+	</search by keyword-0>
+	<search by keyword-0>
+		<currentBuild95Line>50</currentBuild95Line>
+	</search by keyword-0>
+	<04. Search by keyword>
+		<currentBuild90Line>52</currentBuild90Line>
+	</04. Search by keyword>
+	<04. Search by keyword>
+		<currentBuild95Line>57</currentBuild95Line>
+	</04. Search by keyword>
+	<open "catalogs" section-0>
+		<currentBuild90Line>41</currentBuild90Line>
+	</open "catalogs" section-0>
+	<open "catalogs" section-0>
+		<currentBuild95Line>41</currentBuild95Line>
+	</open "catalogs" section-0>
+	<05. Open "Catalogs" section>
+		<currentBuild90Line>47</currentBuild90Line>
+	</05. Open "Catalogs" section>
+	<05. Open "Catalogs" section>
+		<currentBuild95Line>47</currentBuild95Line>
+	</05. Open "Catalogs" section>
+	<open "details" section-0>
+		<currentBuild90Line>61</currentBuild90Line>
+	</open "details" section-0>
+	<open "details" section-0>
+		<currentBuild95Line>70</currentBuild95Line>
+	</open "details" section-0>
+	<06. Open "Details" section>
+		<currentBuild90Line>68</currentBuild90Line>
+	</06. Open "Details" section>
+	<06. Open "Details" section>
+		<currentBuild95Line>72</currentBuild95Line>
+	</06. Open "Details" section>
+	<open "summary reports" section-0>
+		<currentBuild90Line>40</currentBuild90Line>
+	</open "summary reports" section-0>
+	<open "summary reports" section-0>
+		<currentBuild95Line>42</currentBuild95Line>
+	</open "summary reports" section-0>
+	<07. Open "Summary reports" section>
+		<currentBuild90Line>45</currentBuild90Line>
+	</07. Open "Summary reports" section>
+	<07. Open "Summary reports" section>
+		<currentBuild95Line>47</currentBuild95Line>
+	</07. Open "Summary reports" section>
+	<open "settings" section-0>
+		<currentBuild90Line>55</currentBuild90Line>
+	</open "settings" section-0>
+	<open "settings" section-0>
+		<currentBuild95Line>62</currentBuild95Line>
+	</open "settings" section-0>
+	<08. Open "Settings" section>
+		<currentBuild90Line>62</currentBuild90Line>
+	</08. Open "Settings" section>
+	<08. Open "Settings" section>
+		<currentBuild95Line>66</currentBuild95Line>
+	</08. Open "Settings" section>
+	<open "profile" section-0>
+		<currentBuild90Line>58</currentBuild90Line>
+	</open "profile" section-0>
+	<open "profile" section-0>
+		<currentBuild95Line>59</currentBuild95Line>
+	</open "profile" section-0>
+	<09. Open "Profile" section>
+		<currentBuild90Line>64</currentBuild90Line>
+	</09. Open "Profile" section>
+	<09. Open "Profile" section>
+		<currentBuild95Line>64</currentBuild95Line>
+	</09. Open "Profile" section>
+	<logout-0>
+		<currentBuild90Line>97</currentBuild90Line>
+	</logout-0>
+	<logout-0>
+		<currentBuild95Line>102</currentBuild95Line>
+	</logout-0>
+	<logout-1>
+		<currentBuild90Line>94</currentBuild90Line>
+	</logout-1>
+	<logout-1>
+		<currentBuild95Line>98</currentBuild95Line>
+	</logout-1>
+	<10. Logout>
+		<currentBuild90Line>190</currentBuild90Line>
+	</10. Logout>
+	<10. Logout>
+		<currentBuild95Line>198</currentBuild95Line>
+	</10. Logout>
+</percentile>
+</results>

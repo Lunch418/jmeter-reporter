@@ -13,7 +13,8 @@ htmlcov/
 dashBoard_*.xml
 standardResults.xml
 !samples/*.jtl
-!samples/*.xlsx
+!samples/dashBoard_*.xml
+!samples/standardResults.xml
 
 # Editors / OS
 .idea/

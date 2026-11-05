@@ -1,0 +1,24 @@
+# docker compose run --rm report                     # terminal UI over ./data
+# docker compose run --rm report convert /data/jmeter.jtl /data/report.xlsx
+# docker compose --profile test run --rm test        # run the test suite
+services:
+  report:
+    build:
+      context: .
+      target: runtime
+    image: jmeter-report
+    stdin_open: true
+    tty: true
+    # Files written to ./data belong to you, not to root.
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      TZ: "${TZ:-UTC}"
+    volumes:
+      - ./data:/data
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    command: ["python", "-m", "pytest", "-q"]

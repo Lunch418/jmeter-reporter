@@ -32,3 +32,12 @@ def test_committed_sample_matches_generator(tmp_path):
     make_sample.write_jtl(fresh)
     committed = Path(__file__).resolve().parent.parent / 'samples' / 'jmeter.jtl'
     assert committed.read_bytes() == fresh.read_bytes()
+
+
+def test_committed_xml_samples_match_generator(tmp_path):
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent / 'samples'
+    std, dash = tmp_path / 'standardResults.xml', tmp_path / 'dashBoard_jmeter.xml'
+    make_sample.write_xml(root / 'jmeter.jtl', std, dash)
+    assert std.read_bytes() == (root / 'standardResults.xml').read_bytes()
+    assert dash.read_bytes() == (root / 'dashBoard_jmeter.xml').read_bytes()

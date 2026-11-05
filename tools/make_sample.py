@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""Generate a synthetic JMeter JTL (CSV) for demos and tests.
+"""Generate a synthetic JMeter JTL (CSV) plus the two Jenkins XML artifacts.
 
 The data is fully fake: host is example.test, timings come from a seeded RNG,
 so the output is reproducible byte for byte.
 
     python3 tools/make_sample.py samples/jmeter.jtl
+    # -> also writes standardResults.xml and dashBoard_jmeter.xml next to it
     python3 tools/make_sample.py out.jtl --iterations 10 --seed 7
 """
 import argparse
 import csv
+import os
 import random
+import sys
+from collections import defaultdict
+from xml.sax.saxutils import escape
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import convert  # noqa: E402
 
 HEADER = ['timeStamp', 'elapsed', 'label', 'responseCode', 'responseMessage',
           'threadName', 'dataType', 'success', 'failureMessage', 'bytes',
@@ -76,6 +84,48 @@ def write_jtl(path, **kwargs):
         w.writerows(generate(**kwargs))
 
 
+def write_xml(jtl_path, standard_path, dashboard_path):
+    """standardResults.xml and dashBoard_jmeter.xml in the Jenkins Performance plugin layout.
+
+    Numbers are computed from the JTL, so the pair is consistent (verification passes).
+    """
+    grouped = defaultdict(list)
+    for row in convert.parse_jtl_file(str(jtl_path)):
+        grouped[row['label']].append(row)
+    stats = {label: convert.collect_stats(rows) for label, rows in grouped.items()}
+
+    std = ['<?xml version="1.0"?>', '<results>']
+    for label, st in stats.items():
+        std += ['<api>', f'\t<uri>{escape(label)}</uri>',
+                f"\t<samples>{st['samples']}</samples>",
+                f"\t<average>{st['avg']}</average>", f"\t<min>{st['min']}</min>",
+                f"\t<median>{st['median']}</median>",
+                f"\t<ninetieth>{st['p90']}</ninetieth>",
+                f"\t<ninetyFifth>{st['p95']}</ninetyFifth>",
+                f"\t<max>{st['max']}</max>", '\t<httpCode>200</httpCode>',
+                f"\t<errors>{st['error_pct']:.1f}</errors>", '</api>']
+    std.append('</results>')
+
+    dash = ['<?xml version="1.0"?>', '<results>', '<absoluteDefinition>',
+            '\t<unstable>-1</unstable>', '\t<failed>-1</failed>',
+            '\t<calculated>0.0</calculated>', '</absoluteDefinition>']
+    for section, entries in (
+            ('average', [('currentBuildAvg', 'avg')]),
+            ('median', [('currentBuildMed', 'median')]),
+            ('percentile', [('currentBuild90Line', 'p90'), ('currentBuild95Line', 'p95')])):
+        dash.append(f'<{section}>')
+        for label, st in stats.items():
+            for tag, key in entries:
+                # Like Jenkins: the label is written as a tag name, unescaped.
+                dash += [f'\t<{label}>', f'\t\t<{tag}>{st[key]}</{tag}>', f'\t</{label}>']
+        dash.append(f'</{section}>')
+    dash.append('</results>')
+
+    for path, lines in ((standard_path, std), (dashboard_path, dash)):
+        with open(path, 'w', encoding='utf-8', newline='\n') as f:
+            f.write('\n'.join(lines) + '\n')
+
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('output')
@@ -84,4 +134,7 @@ if __name__ == '__main__':
     ap.add_argument('--threads', type=int, default=2)
     a = ap.parse_args()
     write_jtl(a.output, iterations=a.iterations, seed=a.seed, threads=a.threads)
-    print(f'written {a.output}')
+    folder = os.path.dirname(os.path.abspath(a.output))
+    write_xml(a.output, os.path.join(folder, 'standardResults.xml'),
+              os.path.join(folder, 'dashBoard_jmeter.xml'))
+    print(f'written {a.output}, standardResults.xml, dashBoard_jmeter.xml')
