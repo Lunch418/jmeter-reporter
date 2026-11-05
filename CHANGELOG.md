@@ -30,7 +30,18 @@ The Excel report is covered by a golden test: it does not change between version
   34 MB of memory instead of several GB. Cells look and read the same (golden test).
 - The report is written to a temporary file and moved into place at the end: a failed build
   keeps the previous report, and the old version goes to `history/` only after success.
-- `cli.py` returns exit code 2 for unreadable files and CSV errors (was 1 or a traceback).
+- `cli.py` returns exit code 2 for unreadable files and CSV errors (was 1 or a traceback);
+  an unexpected internal error is exit code 3 with a traceback (it used to be 1, which looks
+  like a failed SLA in CI). The codes are listed in `--help` and the README. `convert.py` too.
+- Fields larger than 128 KB (response bodies) are read; cells over Excel's 32 767-character
+  limit are cut with a counted warning.
+- Temporary report files have unique names and normal permissions (two processes with the
+  same `-o` do not clobber each other). The previous report is copied into `history/` before
+  the new file replaces it, so the report path is never empty.
+- The raw-sheet writer fails with a clear message instead of a traceback if openpyxl writes
+  unexpected XML; CI runs the suite on the oldest supported openpyxl (3.0.10) as well.
+- The release workflow checks SemVer: a version whose CHANGELOG section has `### Breaking`
+  must raise the major number.
 
 ## [1.2.0] - 2026-11-05
 

@@ -50,7 +50,8 @@ GitHub Actions are pinned by commit SHA; Dependabot proposes updates weekly.
 
 ## Release
 
-1. Move the `[Unreleased]` notes to a new `## [X.Y.Z] - date` section and bump `jmeter_reporter/version.py`.
+1. Move the `[Unreleased]` notes (a `### Breaking` part means a new MAJOR version; the release
+   workflow enforces it) to a new `## [X.Y.Z] - date` section and bump `jmeter_reporter/version.py`.
 2. `git tag vX.Y.Z && git push --tags`.
 3. The `release` workflow runs the tests, checks tag == version, builds the offline bundle and
    publishes a GitHub Release with the changelog text.

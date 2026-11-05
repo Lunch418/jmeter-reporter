@@ -19,8 +19,12 @@ def history_dir(output):
     return Path(output).parent / HISTORY_DIR
 
 
-def archive_existing(output, extra_files=()):
-    """Move a report (and its side files) that is about to be overwritten into history/.
+def archive_existing(output, extra_files=(), copy_output=False):
+    """Keep a report (and its side files) that is about to be overwritten in history/.
+
+    Side files are moved: a stale .html next to a new report would mislead. The report
+    itself is moved too unless copy_output=True: then it is COPIED and stays at its path,
+    so there is no moment when the report path is empty (the new file replaces it atomically).
 
     Returns the list of archived paths (empty when there was nothing to keep).
     """
@@ -36,7 +40,10 @@ def archive_existing(output, extra_files=()):
         while target.exists():
             counter += 1
             target = folder / f'{path.stem}_{stamp}_{counter}{path.suffix}'
-        shutil.move(str(path), str(target))
+        if copy_output and path == Path(output):
+            shutil.copy2(str(path), str(target))
+        else:
+            shutil.move(str(path), str(target))
         moved.append(target)
     return moved
 

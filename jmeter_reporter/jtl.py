@@ -21,6 +21,7 @@ def to_int(value, default=0):
 # Кодировка JTL. JMeter пишет UTF-8; JTL с Windows-агента бывает в cp1251:
 # JTL_ENCODING=cp1251 python convert.py ...  Молчаливой подмены символов нет.
 JTL_ENCODING = os.environ.get('JTL_ENCODING', 'utf-8-sig')
+MAX_FIELD = 2 ** 31 - 1
 NUMERIC_REQUIRED = ('timeStamp', 'elapsed')
 def iter_jtl_rows(jtl_file, limit=None, warnings=None):
     """Построчное чтение JTL (CSV): память не растет с размером файла.
@@ -46,6 +47,8 @@ def iter_jtl_rows(jtl_file, limit=None, warnings=None):
 
 
 def _read_rows(jtl_file, limit, warnings):
+    # По умолчанию csv отвергает поле больше 128 КБ, а тело ответа в JTL бывает больше.
+    csv.field_size_limit(MAX_FIELD)
     with open(jtl_file, 'r', encoding=JTL_ENCODING, newline='') as f:
         head = f.read(200)
         f.seek(0)

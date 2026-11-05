@@ -79,6 +79,20 @@ def _import_openpyxl():
             get_column_letter)
 
 
+_UMASK = os.umask(0)
+os.umask(_UMASK)
+
+
+def _temp_path(output_file):
+    """Уникальный временный файл рядом с отчетом (на той же файловой системе: replace атомарен)."""
+    import tempfile
+    folder = os.path.dirname(os.path.abspath(output_file))
+    fd, path = tempfile.mkstemp(dir=folder, prefix='.report-', suffix='.tmp')
+    os.close(fd)
+    os.chmod(path, 0o666 & ~_UMASK)  # mkstemp делает 0600, а отчет должен быть как обычный файл
+    return path
+
+
 def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN,
                         standard_xml=None, dashboard_xml=None, include_raw_data=True,
                         archive=None):
@@ -305,28 +319,34 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
             _safety.neutralize_formulas(sheet)
 
     # Сначала во временный файл, потом одним переименованием: если сборка упала,
-    # прежний отчет остается на месте. Старая версия уходит в историю только при успехе.
-    tmp = f'{output_file}.tmp'
+    # прежний отчет остается на месте. Старая версия копируется в историю до замены, а не
+    # переносится: пути отчета нет пустого момента. Имена временных файлов уникальны
+    # (два процесса с одним -o не затирают друг друга).
+    tmp = None
     archived = []
     try:
         try:
+            tmp = _temp_path(output_file)
             wb.save(tmp)
             if raw_stream:
                 rows_iter, style, numeric_columns, raw_headers, total_rows = raw_stream
-                tmp_full = f'{output_file}.full.tmp'
+                tmp_full = _temp_path(output_file)
                 try:
-                    rawsheet.fill_sheet(tmp, tmp_full, wb.sheetnames.index('Исходные данные') + 1,
-                                        rows_iter, style, numeric_columns, raw_headers,
-                                        total_rows)
+                    _, cut = rawsheet.fill_sheet(
+                        tmp, tmp_full, wb.sheetnames.index('Исходные данные') + 1,
+                        rows_iter, style, numeric_columns, raw_headers, total_rows)
                     os.replace(tmp_full, tmp)
                 finally:
                     if os.path.exists(tmp_full):
                         os.remove(tmp_full)
+                if cut:
+                    warnings.append(f"{cut} ячеек листа 'Исходные данные' обрезано до "
+                                    f"{rawsheet.MAX_CELL_CHARS} символов (лимит Excel)")
             if archive is not None:
                 archived = archive()
             rawsheet.atomic_replace(tmp, output_file)
         finally:
-            if os.path.exists(tmp):
+            if tmp and os.path.exists(tmp):
                 os.remove(tmp)
     except OSError as exc:
         raise _errors.ReportError(f"Не удалось сохранить '{output_file}': {exc}")
@@ -365,6 +385,9 @@ USAGE = (
     "                 (лимит строк Excel, память). Остальные листы те же.\n"
     "  --raw-data     добавить лист 'Исходные данные' (по умолчанию; перекрывает конфиг).\n"
     "  --version      версия программы.\n"
+    "\n"
+    "Коды выхода: 0 - готово; 2 - ошибка входных данных, файла или конфига;\n"
+    "3 - внутренняя ошибка программы (подробности в stderr).\n"
     "  --config F     report.toml с умолчаниями (пояс, шаги); по умолчанию берется\n"
     "                 report.toml из текущей папки, если он есть.\n"
     "  --steps RE  Регулярное выражение для шагов на листе 'График времени'.\n"
@@ -454,7 +477,8 @@ def main(argv=None):
         archive = None
         if args['keep_history']:
             from . import history
-            archive = lambda: history.archive_existing(args['output'])  # noqa: E731
+            archive = lambda: history.archive_existing(  # noqa: E731
+                args['output'], copy_output=True)
         info = create_excel_report(
             args['jtl'], args['output'], tz=args['tz'], step_pattern=args['steps'],
             standard_xml=args['standard'], dashboard_xml=args['dashboard'],
@@ -462,6 +486,15 @@ def main(argv=None):
     except _errors.ReportError as exc:
         print(exc, file=sys.stderr)
         return 2
+    except OSError as exc:
+        print(f"{exc.strerror or exc}: {getattr(exc, 'filename', '') or ''}".strip(': '),
+              file=sys.stderr)
+        return 2
+    except Exception:  # внутренняя ошибка: отдельный код, чтобы не путать со входными данными
+        import traceback
+        traceback.print_exc()
+        print("Внутренняя ошибка программы (код выхода 3).", file=sys.stderr)
+        return 3
     for warning in info['warnings']:
         print(f"Внимание: {warning}", file=sys.stderr)
     if args['keep_history']:

@@ -58,3 +58,32 @@ def test_runtime_modules_do_not_use_network(module):
             names = [node.module]
         for name in names:
             assert name.split('.')[0] not in banned, f'{module} imports {name}'
+
+
+CHANGES = """# Changelog
+## [Unreleased]
+### Breaking
+- x
+## [2.0.0] - d
+### Breaking
+- y
+## [1.2.0] - d
+### Added
+- z
+## [1.1.0] - d
+### Added
+- w
+"""
+
+
+def test_breaking_release_needs_a_new_major_version():
+    assert changelog_section.check_semver('2.0.0', CHANGES) is None
+    bad = CHANGES.replace('## [1.2.0] - d\n### Added', '## [1.2.0] - d\n### Breaking')
+    assert 'new major' in changelog_section.check_semver('1.2.0', bad)
+    assert changelog_section.check_semver('1.1.0', CHANGES) is None
+    assert 'No CHANGELOG section' in changelog_section.check_semver('9.9.9', CHANGES)
+
+
+def test_released_versions_in_the_real_changelog_follow_semver():
+    for released in changelog_section.versions():
+        assert changelog_section.check_semver(released) is None, released

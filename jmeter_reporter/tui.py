@@ -561,7 +561,7 @@ class ReportApp(App):
                 jtl, output, tz=tz, step_pattern=steps,
                 standard_xml=standard, dashboard_xml=dashboard,
                 include_raw_data=self.cfg.include_raw_data if self.cfg else True,
-                archive=(lambda: history.archive_existing(output, side)) if keep else None)
+                archive=(lambda: history.archive_existing(output, side, copy_output=True)) if keep else None)
             # The Excel report is done; extras must not hide that if they fail.
             info['extras'], info['extras_error'] = None, None
             try:

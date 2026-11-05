@@ -12,14 +12,20 @@ import re
 import zipfile
 from xml.sax.saxutils import escape
 
+import openpyxl
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.utils import get_column_letter
+
+from .errors import ReportError
 
 MAX_CELL_CHARS = 32767  # Excel limit
 
 
-def _text_cell(ref, style, value):
-    text = ILLEGAL_CHARACTERS_RE.sub('', value)[:MAX_CELL_CHARS]
+def _text_cell(ref, style, value, counter):
+    text = ILLEGAL_CHARACTERS_RE.sub('', value)
+    if len(text) > MAX_CELL_CHARS:
+        counter[0] += 1
+        text = text[:MAX_CELL_CHARS]
     return (f'<c r="{ref}" s="{style}" t="inlineStr"><is>'
             f'<t xml:space="preserve">{escape(text)}</t></is></c>')
 
@@ -28,7 +34,8 @@ def _number_cell(ref, style, value):
     return f'<c r="{ref}" s="{style}"><v>{value}</v></c>'
 
 
-def row_xml(number, values, style, letters):
+def row_xml(number, values, style, letters, counter=None):
+    counter = counter if counter is not None else [0]
     cells = []
     for letter, value in zip(letters, values):
         ref = f'{letter}{number}'
@@ -37,7 +44,7 @@ def row_xml(number, values, style, letters):
         elif isinstance(value, int) and not isinstance(value, bool):
             cells.append(_number_cell(ref, style, value))
         else:
-            cells.append(_text_cell(ref, style, str(value)))
+            cells.append(_text_cell(ref, style, str(value), counter))
     return f'<row r="{number}">{"".join(cells)}</row>'
 
 
@@ -46,12 +53,15 @@ def fill_sheet(src, dst, sheet_index, rows, style, numeric_columns, headers, tot
 
     `rows` yields dicts (one per JTL line); `total_rows` is how many of them to write
     (known in advance from the statistics pass, it also gives the sheet dimension).
-    Returns the number of data rows written.
+    Returns (rows written, cells cut to Excel's 32 767-character limit).
+    Raises ReportError when the sheet XML written by this openpyxl version has an unexpected
+    shape (this code relies on it; CI checks the oldest supported openpyxl too).
     """
     target = f'xl/worksheets/sheet{sheet_index}.xml'
     letters = [get_column_letter(i) for i in range(1, len(headers) + 1)]
     last_ref = f'{letters[-1]}{total_rows + 1}'
     written = 0
+    cut = [0]
     with zipfile.ZipFile(src) as zin, \
             zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
         for item in zin.infolist():
@@ -59,9 +69,15 @@ def fill_sheet(src, dst, sheet_index, rows, style, numeric_columns, headers, tot
                 zout.writestr(item, zin.read(item.filename))
                 continue
             xml = zin.read(item.filename).decode('utf-8')
-            head, _, rest = xml.partition('<sheetData>')
-            body, _, tail = rest.partition('</sheetData>')
-            header_row = re.search(r'<row r="1".*?</row>', body, re.S).group(0)
+            head, found, rest = xml.partition('<sheetData>')
+            body, found_end, tail = rest.partition('</sheetData>')
+            header = re.search(r'<row r="1".*?</row>', body, re.S) if found and found_end else None
+            if header is None:
+                raise ReportError(
+                    f"Несовместимая версия openpyxl {openpyxl.__version__}: не найден заголовок "
+                    f"листа в {target}. Используйте openpyxl от 3.0.10 до 3.1.x "
+                    f"или отключите лист: --no-raw-data.")
+            header_row = header.group(0)
             head = re.sub(r'<dimension ref="[^"]*"', f'<dimension ref="A1:{last_ref}"', head)
             info = zipfile.ZipInfo(target, item.date_time)
             info.compress_type = zipfile.ZIP_DEFLATED  # ZipInfo defaults to STORED
@@ -77,13 +93,13 @@ def fill_sheet(src, dst, sheet_index, rows, style, numeric_columns, headers, tot
                         if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
                             value = int(value)
                         values.append(value)
-                    chunk.append(row_xml(written + 2, values, style, letters))
+                    chunk.append(row_xml(written + 2, values, style, letters, cut))
                     written += 1
                     if len(chunk) >= 500:
                         out.write(''.join(chunk).encode('utf-8'))
                         chunk = []
                 out.write((''.join(chunk) + '</sheetData>' + tail).encode('utf-8'))
-    return written
+    return written, cut[0]
 
 
 def atomic_replace(tmp, final):

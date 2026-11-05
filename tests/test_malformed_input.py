@@ -219,11 +219,54 @@ def test_cli_directory_instead_of_file_is_exit_2(tmp_path):
     assert cli.main(['export', str(tmp_path), '--format', 'csv']) == 2
 
 
-def test_cli_csv_error_is_exit_2(tmp_path):
+def test_cli_csv_error_is_exit_2(tmp_path, monkeypatch):
+    import csv
+
     from jmeter_reporter import cli
-    path = tmp_path / 'x.jtl'
-    path.write_bytes(HEADER.encode() + b'1700000000000,10,' + b'x' * 300_000 + b',200,true,5\n')
-    assert cli.main(['export', str(path), '--format', 'csv']) == 2
+    path = write(tmp_path, '1700000000000,10,A,200,true,5\n')
+
+    class Broken:
+        def __init__(self, *a, **k):
+            raise csv.Error('line contains NUL')
+
+    monkeypatch.setattr(csv, 'DictReader', Broken)
+    assert cli.main(['export', path, '--format', 'csv']) == 2
+
+
+def test_field_bigger_than_128_kb_is_read(tmp_path):
+    body = '1700000000000,10,A,200,' + 'x' * 300_000 + ',true,5\n'
+    path = write(tmp_path, body, header='timeStamp,elapsed,label,responseCode,responseMessage,'
+                                        'success,bytes\n')
+    assert stats.load_run(path).rows == 1
+
+
+def test_unexpected_exception_is_exit_3_not_1(tmp_path, sample_jtl, monkeypatch, capsys):
+    from jmeter_reporter import cli
+    cfg = tmp_path / 'r.toml'
+    cfg.write_text('[sla]\np90_ms = 100000\n', encoding='utf-8')
+
+    def boom(*a, **k):
+        raise RuntimeError('boom')
+
+    monkeypatch.setattr(stats, 'load_run', boom)
+    assert cli.main(['check', str(sample_jtl), '--config', str(cfg)]) == 3
+    err = capsys.readouterr().err
+    assert 'RuntimeError' in err and 'код выхода 3' in err
+
+
+def test_convert_unexpected_exception_is_exit_3(sample_jtl, tmp_path, monkeypatch):
+    monkeypatch.setattr(stats, 'load_run', lambda *a, **k: 1 / 0)
+    assert convert.main([str(sample_jtl), str(tmp_path / 'o.xlsx')]) == 3
+
+
+def test_help_documents_exit_codes(capsys):
+    from jmeter_reporter import cli
+    with pytest.raises(SystemExit):
+        cli.main(['--help'])
+    out = capsys.readouterr().out
+    assert 'Коды выхода' in out and '3 -' in out
+    convert.main(['--help'])
+    assert '3 - внутренняя' in capsys.readouterr().out
 
 
 def test_cli_unwritable_output_is_exit_2(tmp_path, sample_jtl):
@@ -240,7 +283,7 @@ def test_failed_build_keeps_the_previous_report(tmp_path, sample_jtl):
     with pytest.raises(ReportError):
         convert.create_excel_report(bad, str(out))
     assert out.read_bytes() == before
-    assert not list(tmp_path.glob('*.tmp'))
+    assert not [p for p in tmp_path.iterdir() if p.suffix == '.tmp']
 
 
 def test_history_archive_happens_only_after_a_successful_build(tmp_path, sample_jtl):
@@ -261,3 +304,60 @@ def test_old_convert_names_still_work_but_warn():
         assert convert.to_int('7') == 7
     with pytest.warns(DeprecationWarning):
         assert convert.ReportError is ReportError
+
+
+# ---- raw sheet: cut cells, incompatible openpyxl, temp files, archive order -----------------
+
+def test_cells_over_the_excel_limit_are_cut_with_a_warning(tmp_path):
+    from openpyxl import load_workbook
+    body = '1700000000000,10,A,200,' + 'y' * 40_000 + ',true,5\n'
+    path = write(tmp_path, body, header='timeStamp,elapsed,label,responseCode,responseMessage,'
+                                        'success,bytes\n')
+    out = tmp_path / 'r.xlsx'
+    info = convert.create_excel_report(path, str(out), tz=resolve_timezone('UTC'))
+    assert any('обрезано' in w and '32767' in w for w in info['warnings'])
+    cell = load_workbook(out)['Исходные данные']['E2'].value
+    assert len(cell) == 32767
+
+
+def test_incompatible_openpyxl_output_is_a_clear_error(tmp_path, sample_jtl, monkeypatch):
+    from jmeter_reporter import rawsheet
+    import re
+    import types
+    stub = types.SimpleNamespace(search=lambda *a, **k: None, sub=re.sub, S=re.S)
+    monkeypatch.setattr(rawsheet, 're', stub)  # only inside rawsheet, not the global module
+    with pytest.raises(ReportError, match='Несовместимая версия openpyxl'):
+        convert.create_excel_report(str(sample_jtl), str(tmp_path / 'r.xlsx'))
+    assert not [p for p in tmp_path.iterdir() if p.suffix == '.tmp']
+
+
+def test_temp_files_are_unique_and_have_normal_permissions(tmp_path):
+    out = str(tmp_path / 'r.xlsx')
+    a, b = convert._temp_path(out), convert._temp_path(out)
+    assert a != b and a.endswith('.tmp')
+    import os
+    import stat
+    assert stat.S_IMODE(os.stat(a).st_mode) == 0o666 & ~convert._UMASK
+
+
+def test_report_file_has_normal_permissions(tmp_path, sample_jtl):
+    import os
+    import stat
+    out = tmp_path / 'r.xlsx'
+    convert.create_excel_report(str(sample_jtl), str(out))
+    assert stat.S_IMODE(os.stat(out).st_mode) == 0o666 & ~convert._UMASK
+
+
+def test_archive_copies_the_report_so_its_path_is_never_empty(tmp_path, sample_jtl):
+    from jmeter_reporter import history
+    out = tmp_path / 'r.xlsx'
+    convert.create_excel_report(str(sample_jtl), str(out))
+    seen = {}
+
+    def archive():
+        moved = history.archive_existing(out, copy_output=True)
+        seen['still_there'] = out.exists()
+        return moved
+
+    info = convert.create_excel_report(str(sample_jtl), str(out), archive=archive)
+    assert seen['still_there'] and info['archived'] and out.exists()

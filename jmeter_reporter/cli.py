@@ -90,9 +90,17 @@ def cmd_export(args):
     return 0
 
 
+EXIT_CODES = (
+    "Коды выхода: 0 - все хорошо; 1 - SLA нарушен (check) или найдены ухудшения\n"
+    "(compare --fail-on-regression); 2 - ошибка входных данных, файла или конфига;\n"
+    "3 - внутренняя ошибка программы (подробности в stderr, пришлите их автору).")
+
+
 def build_parser():
     from . import version
-    parser = argparse.ArgumentParser(prog='cli.py', description=__doc__.split('\n\n')[0])
+    parser = argparse.ArgumentParser(
+        prog='cli.py', description=__doc__.split('\n\n')[0], epilog=EXIT_CODES,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--version', action='version', version=f'jmeter-report {version.__version__}')
     sub = parser.add_subparsers(dest='command', required=True)
 
@@ -143,6 +151,11 @@ def main(argv=None):
         print(f"{exc.strerror or exc}: {getattr(exc, 'filename', '') or ''}".strip(': '),
               file=sys.stderr)
         return 2
+    except Exception:  # a bug must not look like "SLA failed" (exit 1) in a CI pipeline
+        import traceback
+        traceback.print_exc()
+        print("Внутренняя ошибка программы (код выхода 3).", file=sys.stderr)
+        return 3
 
 
 if __name__ == '__main__':
