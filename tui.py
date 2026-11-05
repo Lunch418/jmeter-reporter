@@ -18,8 +18,12 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.theme import Theme
 from textual.widgets import DirectoryTree, Input, RichLog, Select, Static
 
+import compare
+import config
 import convert
 import preview
+import sla
+import workflow
 
 ACCENT = '#d97757'   # the orange of Claude Code
 DIM = '#8b8b8b'
@@ -46,6 +50,17 @@ FILE_TYPES = {
     'all': ('все файлы', None),
 }
 PREVIEWABLE = {'.jtl', '.csv', '.xml'}
+
+# Extra outputs next to the Excel report: label -> (select value, formats or None = from config).
+EXPORT_CHOICES = [
+    ('как в конфиге', 'config'),
+    ('только Excel', 'none'),
+    ('+ HTML', 'html'),
+    ('+ CSV', 'csv'),
+    ('+ HTML и CSV', 'both'),
+]
+EXPORT_FORMATS_BY_CHOICE = {'config': None, 'none': [], 'html': ['html'], 'csv': ['csv'],
+                            'both': ['html', 'csv']}
 
 TIMEZONES = [
     ('локальный', 'local'),
@@ -105,6 +120,13 @@ def find_xml_artifacts(jtl_path):
     return standard, dashboard
 
 
+def short_path(path):
+    """/home/user/x -> ~/x for display."""
+    home = str(Path.home())
+    text = str(path)
+    return '~' + text[len(home):] if text.startswith(home) else text
+
+
 CLUTTER_DIRS = {'__pycache__', 'node_modules', 'venv', 'site-packages', '.venv'}
 
 
@@ -143,6 +165,7 @@ class ReportApp(App):
         ('ctrl+u', 'folder_up', 'папка выше'),
         ('ctrl+b', 'open_folder', 'открыть папку'),
         ('ctrl+f', 'toggle_filter', 'тип файлов'),
+        ('ctrl+e', 'set_baseline', 'эталон'),
         ('ctrl+q', 'quit', 'выход'),
     ]
     CSS = f"""
@@ -196,6 +219,7 @@ class ReportApp(App):
         super().__init__()
         self.start_dir = Path(start_dir).expanduser().resolve()
         self._output_touched = False  # the user edited the output path by hand
+        self.cfg = None               # report.toml, if found
 
     # ------------------------------------------------------------ layout ----
 
@@ -228,6 +252,14 @@ class ReportApp(App):
                     with Horizontal(classes='row'):
                         yield Static('шаги', classes='key')
                         yield Input(value=convert.DEFAULT_STEP_PATTERN, id='steps')
+                    with Horizontal(classes='row'):
+                        yield Static('эталон', classes='key')
+                        yield Input(placeholder='JTL до изменений для сравнения (Ctrl+E)',
+                                    id='baseline')
+                    with Horizontal(classes='row'):
+                        yield Static('экспорт', classes='key')
+                        yield Select(EXPORT_CHOICES, value='config', allow_blank=False,
+                                     id='export')
             with Vertical(id='right'):
                 with Vertical(id='preview-panel', classes='panel'):
                     with VerticalScroll(id='preview-scroll'):
@@ -236,7 +268,7 @@ class ReportApp(App):
                 with Vertical(id='log-panel', classes='panel'):
                     yield RichLog(id='log', wrap=True, markup=True, highlight=False)
         yield Static('ctrl+r создать   ctrl+o файлы   ctrl+u выше   ctrl+b открыть папку   '
-                     'ctrl+f тип   tab дальше   ctrl+q выход', id='hints')
+                     'ctrl+f тип   ctrl+e эталон   tab дальше   ctrl+q выход', id='hints')
 
     @staticmethod
     def _header_text():
@@ -257,7 +289,39 @@ class ReportApp(App):
         tree.root.expand()
         tree.focus()
         self._refresh_notes()
+        self._load_config()
         self.say('Выберите .jtl в дереве (Enter) и нажмите Ctrl+R.', DIM)
+
+    def _load_config(self):
+        """report.toml from the start folder or the current one: defaults and SLA."""
+        try:
+            self.cfg = config.load_for(None, self.start_dir, Path.cwd())
+        except convert.ReportError as exc:
+            self.cfg = None
+            self.headline('Ошибка в report.toml', ERR)
+            for line in str(exc).splitlines():
+                self.say(line, ERR)
+            return
+        if self.cfg is None:
+            return
+        if self.cfg.steps:
+            self.query_one('#steps', Input).value = self.cfg.steps
+        if self.cfg.timezone:
+            self.query_one('#tz-custom', Input).value = self.cfg.timezone
+        extras = []
+        if self.cfg.sla:
+            extras.append('SLA')
+        if self.cfg.exports:
+            extras.append('экспорт: ' + ', '.join(self.cfg.exports))
+        self.say(f'конфиг: {short_path(self.cfg.path)}'
+                 + (f' ({", ".join(extras)})' if extras else ''), DIM)
+
+    def _default_output(self, jtl_path):
+        """default_output_path, but into output_dir from the config when it is set."""
+        path = default_output_path(jtl_path)
+        if self.cfg and self.cfg.output_dir:
+            return Path(self.cfg.output_dir).expanduser() / path.name
+        return path
 
     @staticmethod
     def _files_title(label):
@@ -275,7 +339,7 @@ class ReportApp(App):
             return
         self.query_one('#jtl', Input).value = str(path)
         if not self._output_touched:
-            self.query_one('#output', Input).value = str(default_output_path(path))
+            self.query_one('#output', Input).value = str(self._default_output(path))
         standard, dashboard = find_xml_artifacts(path)
         self.query_one('#standard', Input).value = standard
         self.query_one('#dashboard', Input).value = dashboard
@@ -295,7 +359,7 @@ class ReportApp(App):
     def _output_changed(self, event):
         # Auto-fill also triggers Changed, so compare with the expected value.
         jtl = self.query_one('#jtl', Input).value.strip()
-        expected = str(default_output_path(jtl)) if jtl else ''
+        expected = str(self._default_output(jtl)) if jtl else ''
         self._output_touched = bool(event.value) and event.value != expected
 
     @on(Input.Changed, '#standard, #dashboard')
@@ -374,6 +438,17 @@ class ReportApp(App):
             else:
                 key.update(Text(f'{title} !', style=ERR))
 
+    def action_set_baseline(self):
+        """Use the highlighted file in the tree as the baseline run for comparison."""
+        node = self.query_one(FileTree).cursor_node
+        data = node.data if node is not None else None
+        if data is not None and Path(data.path).is_file() \
+                and Path(data.path).suffix.lower() in ('.jtl', '.csv'):
+            self.query_one('#baseline', Input).value = str(data.path)
+            self.say(f'эталон: {short_path(data.path)}', DIM)
+        else:
+            self.headline('Выберите в дереве файл .jtl и нажмите Ctrl+E', ERR)
+
     def action_focus_files(self):
         self.query_one(FileTree).focus()
 
@@ -404,6 +479,8 @@ class ReportApp(App):
         custom_tz = self.query_one('#tz-custom', Input).value.strip()
         tz_value = custom_tz or self.query_one('#tz', Select).value
         steps = self.query_one('#steps', Input).value.strip() or convert.DEFAULT_STEP_PATTERN
+        baseline = self.query_one('#baseline', Input).value.strip()
+        export_choice = self.query_one('#export', Select).value
 
         if not jtl:
             self.headline('Не выбран входной файл', ERR)
@@ -415,8 +492,11 @@ class ReportApp(App):
             if path and not Path(path).expanduser().is_file():
                 self.headline(f'{label} не найден: {path}', ERR)
                 return
+        if baseline and not Path(baseline).expanduser().is_file():
+            self.headline(f'Эталон не найден: {baseline}', ERR)
+            return
         if not output:
-            output = str(default_output_path(jtl))
+            output = str(self._default_output(jtl))
             self.query_one('#output', Input).value = output
         if not output.lower().endswith('.xlsx'):
             self.headline('Выходной файл должен иметь расширение .xlsx', ERR)
@@ -437,14 +517,23 @@ class ReportApp(App):
         self._build_worker(
             str(Path(jtl).expanduser()), str(Path(output).expanduser()), tz, steps,
             str(Path(standard).expanduser()) if standard else None,
-            str(Path(dashboard).expanduser()) if dashboard else None)
+            str(Path(dashboard).expanduser()) if dashboard else None,
+            str(Path(baseline).expanduser()) if baseline else None,
+            EXPORT_FORMATS_BY_CHOICE.get(export_choice))
 
     @work(thread=True, exclusive=True, group='build')
-    def _build_worker(self, jtl, output, tz, steps, standard, dashboard):
+    def _build_worker(self, jtl, output, tz, steps, standard, dashboard, baseline, exports):
         try:
             info = convert.create_excel_report(
                 jtl, output, tz=tz, step_pattern=steps,
                 standard_xml=standard, dashboard_xml=dashboard)
+            # The Excel report is done; extras must not hide that if they fail.
+            info['extras'], info['extras_error'] = None, None
+            try:
+                info['extras'] = workflow.run_extras(
+                    jtl, output, self.cfg, tz, steps, baseline=baseline, exports=exports)
+            except convert.ReportError as exc:
+                info['extras_error'] = str(exc)
         except convert.ReportError as exc:
             self.call_from_thread(self._build_failed, str(exc))
         except Exception as exc:  # an unexpected error must not kill the UI
@@ -472,7 +561,38 @@ class ReportApp(App):
         for warning in info['warnings']:
             if not warning.startswith('сверка'):
                 self.say(f'внимание: {warning}', WARN)
+        self._show_extras(info)
         self.headline(f'Готово: {info["output"]}', OK)
+
+    def _show_extras(self, info):
+        if info.get('extras_error'):
+            self.say(f'доп. результаты не построены: {info["extras_error"]}', ERR)
+        extras = info.get('extras')
+        if not extras:
+            return
+        verdict = extras['verdict']
+        if verdict is not None:
+            if verdict.passed:
+                self.say(f'SLA PASS: проверено {verdict.checked}', OK)
+            else:
+                self.say(f'SLA FAIL: нарушений {len(verdict.failed)} из {verdict.checked}', ERR)
+                for row in verdict.failed[:5]:
+                    sign = '>' if row['kind'] == 'max' else '<'
+                    self.say(f'  {row["label"][:40]}: {row["limit"]} '
+                             f'{row["actual"]:g} {sign} {row["bound"]:g}', ERR)
+                if len(verdict.failed) > 5:
+                    self.say(f'  ... и еще {len(verdict.failed) - 5}', ERR)
+        comparison = extras['comparison']
+        if comparison is not None:
+            color = ERR if comparison.has_regressions else OK
+            self.say(f'сравнение (допуск {comparison.tolerance:g}%): хуже '
+                     f'{comparison.count("regression")}, лучше {comparison.count("improvement")}, '
+                     f'без изменений {comparison.count("same")}', color)
+            for row in comparison.regressions[:5]:
+                self.say(f'  хуже: {row["label"][:40]}: avg {compare.format_delta(row["avg_delta"])}'
+                         f', p90 {compare.format_delta(row["p90_delta"])}', ERR)
+        for path in extras['files']:
+            self.say(f'файл: {path}', DIM)
 
 
 def main(argv=None):

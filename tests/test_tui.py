@@ -2,7 +2,7 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from textual.widgets import Input, RichLog, Static
+from textual.widgets import Input, RichLog, Select, Static
 
 import tui
 
@@ -395,3 +395,211 @@ def test_build_creates_missing_reports_folder(tmp_path, sample_jtl):
 
     run(scenario())
     assert out.exists()
+
+
+# ------------------------------------- config, baseline, export, SLA (v4) ----
+
+def _build_and_wait(app, pilot):
+    async def go():
+        app.action_build()
+        for _ in range(200):
+            await pilot.pause(0.05)
+            if 'Готово' in log_text(app) or 'Ошибка' in log_text(app):
+                break
+        await pilot.pause()
+    return go()
+
+
+def test_config_is_loaded_and_applied(tmp_path, monkeypatch):
+    (tmp_path / 'report.toml').write_text(
+        '[report]\ntimezone = "UTC"\nsteps = "^0[1-2]"\n[sla]\np90_ms = 5\n'
+        '[export]\nformats = ["csv"]\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert app.cfg is not None
+            assert app.query_one('#steps', Input).value == '^0[1-2]'
+            assert app.query_one('#tz-custom', Input).value == 'UTC'
+            assert 'SLA' in log_text(app) and 'экспорт: csv' in log_text(app)
+
+    run(scenario())
+
+
+def test_broken_config_is_reported_not_fatal(tmp_path, monkeypatch):
+    (tmp_path / 'report.toml').write_text('[sla]\nbogus = 1\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            assert app.cfg is None
+            assert 'Ошибка в report.toml' in log_text(app)
+            assert 'bogus' in log_text(app)
+
+    run(scenario())
+
+
+def test_set_baseline_from_tree(tmp_path, sample_jtl, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.action_set_baseline()  # cursor is on the folder, not a file
+            await pilot.pause()
+            assert 'Выберите в дереве файл' in log_text(app)
+            tree = app.query_one(tui.FileTree)
+            node = next(n for n in tree.root.children if n.data.path == sample_jtl)
+            tree.move_cursor(node)
+            await pilot.pause()
+            app.action_set_baseline()
+            assert app.query_one('#baseline', Input).value == str(sample_jtl)
+
+    run(scenario())
+
+
+def test_build_with_baseline_and_exports(tmp_path, sample_jtl, slow_jtl, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / 'r.xlsx'
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test(size=(160, 50)) as pilot:
+            await pilot.pause()
+            app.query_one('#jtl', Input).value = str(slow_jtl)
+            app.query_one('#output', Input).value = str(out)
+            app.query_one('#baseline', Input).value = str(sample_jtl)
+            app.query_one('#export', Select).value = 'both'
+            await _build_and_wait(app, pilot)
+            text = log_text(app)
+            assert 'сравнение (допуск 10%)' in text
+            assert 'Готово' in text
+
+    run(scenario())
+    for name in ('r.xlsx', 'r_compare.xlsx', 'r.html', 'r.csv'):
+        assert (tmp_path / name).exists(), name
+
+
+def test_export_choice_none_overrides_config(tmp_path, sample_jtl, monkeypatch):
+    (tmp_path / 'report.toml').write_text('[export]\nformats = ["csv"]\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / 'r.xlsx'
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(out)
+            app.query_one('#export', Select).value = 'none'
+            await _build_and_wait(app, pilot)
+
+    run(scenario())
+    assert out.exists() and not (tmp_path / 'r.csv').exists()
+
+
+def test_config_export_used_by_default(tmp_path, sample_jtl, monkeypatch):
+    (tmp_path / 'report.toml').write_text('[export]\nformats = ["csv"]\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / 'r.xlsx'
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(out)
+            await _build_and_wait(app, pilot)
+
+    run(scenario())
+    assert (tmp_path / 'r.csv').exists()
+
+
+def test_sla_verdict_is_shown(tmp_path, sample_jtl, monkeypatch):
+    (tmp_path / 'report.toml').write_text('[sla]\np90_ms = 5\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test(size=(160, 50)) as pilot:
+            await pilot.pause()
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(tmp_path / 'r.xlsx')
+            await _build_and_wait(app, pilot)
+            text = log_text(app)
+            assert 'SLA FAIL' in text and 'p90_ms' in text and 'Готово' in text
+
+    run(scenario())
+
+
+def test_sla_pass_is_shown(tmp_path, sample_jtl, monkeypatch):
+    (tmp_path / 'report.toml').write_text('[sla]\np90_ms = 999999\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(tmp_path / 'r.xlsx')
+            await _build_and_wait(app, pilot)
+            assert 'SLA PASS' in log_text(app)
+
+    run(scenario())
+
+
+def test_extras_failure_does_not_hide_the_report(tmp_path, sample_jtl, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    bad = tmp_path / 'bad.jtl'
+    bad.write_text('a,b\n1,2\n', encoding='utf-8')
+    out = tmp_path / 'r.xlsx'
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test(size=(160, 50)) as pilot:
+            await pilot.pause()
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#output', Input).value = str(out)
+            app.query_one('#baseline', Input).value = str(bad)
+            await _build_and_wait(app, pilot)
+            text = log_text(app)
+            assert 'доп. результаты не построены' in text and 'Готово' in text
+
+    run(scenario())
+    assert out.exists()
+
+
+def test_missing_baseline_is_rejected(tmp_path, sample_jtl, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            app.query_one('#jtl', Input).value = str(sample_jtl)
+            app.query_one('#baseline', Input).value = str(tmp_path / 'nope.jtl')
+            app.action_build()
+            await pilot.pause()
+            assert 'Эталон не найден' in log_text(app)
+
+    run(scenario())
+
+
+def test_output_dir_from_config(tmp_path, sample_jtl, monkeypatch):
+    (tmp_path / 'report.toml').write_text('[report]\noutput_dir = "out"\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            tree = app.query_one(tui.FileTree)
+            tree.post_message(tui.DirectoryTree.FileSelected(tree.root, sample_jtl))
+            await pilot.pause()
+            assert app.query_one('#output', Input).value == str(Path('out') / 'sample_report.xlsx')
+
+    run(scenario())

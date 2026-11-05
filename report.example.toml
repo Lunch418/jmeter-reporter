@@ -1,0 +1,24 @@
+# Copy to report.toml (next to where you run the tools) to use it automatically.
+# Check the file with:  python3 config.py report.toml
+
+[report]
+timezone = "Europe/Moscow"      # local | UTC | Europe/Moscow | +05:00
+steps = '^\d{2}\.'              # labels like "01. Login" are steps
+# output_dir = "reports"        # where reports go when no path is given
+
+[compare]
+tolerance_pct = 10              # avg / p90 change above this is a regression
+
+[export]
+formats = ["html"]              # extra files next to the Excel report: html, csv
+
+[sla]                           # limits for every step; units: ms, percent, requests/sec
+p90_ms = 2000
+error_pct = 1.0
+
+[sla.total]                     # limits for the TOTAL row
+error_pct = 2.0
+
+[[sla.step]]                    # a heavier step gets its own limit
+match = '^02\.'
+p90_ms = 5000

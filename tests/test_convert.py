@@ -237,3 +237,48 @@ def test_cli_help_exits_zero():
     with pytest.raises(SystemExit) as exc:
         convert.parse_args(['--help'])
     assert exc.value.code == 0
+
+
+# ------------------------------------------------------------ report.toml ----
+
+def test_config_gives_defaults_for_tz_and_steps(sample_jtl, tmp_path, monkeypatch):
+    (tmp_path / 'report.toml').write_text(
+        '[report]\ntimezone = "+05:00"\nsteps = "^0[1-3]"\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+    args = convert.parse_args([str(sample_jtl), 'o.xlsx'])
+    assert args['steps'] == '^0[1-3]'
+    assert args['tz'].utcoffset(None) == dt.timedelta(hours=5)
+
+
+def test_cli_options_beat_config(sample_jtl, tmp_path, monkeypatch):
+    (tmp_path / 'report.toml').write_text(
+        '[report]\ntimezone = "+05:00"\nsteps = "^0[1-3]"\n', encoding='utf-8')
+    monkeypatch.chdir(tmp_path)
+    args = convert.parse_args([str(sample_jtl), 'o.xlsx', '--tz', 'UTC', '--steps', '^10'])
+    assert args['steps'] == '^10' and args['tz'].utcoffset(None) == dt.timedelta(0)
+
+
+def test_explicit_config_option(sample_jtl, tmp_path):
+    cfg = tmp_path / 'my.toml'
+    cfg.write_text('[report]\nsteps = "^05"\n', encoding='utf-8')
+    assert convert.parse_args([str(sample_jtl), 'o.xlsx', '--config', str(cfg)])['steps'] == '^05'
+
+
+def test_broken_config_stops_the_cli(sample_jtl, tmp_path):
+    cfg = tmp_path / 'bad.toml'
+    cfg.write_text('[report\n', encoding='utf-8')
+    with pytest.raises(SystemExit):
+        convert.parse_args([str(sample_jtl), 'o.xlsx', '--config', str(cfg)])
+
+
+def test_default_steps_without_config(sample_jtl, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert convert.parse_args([str(sample_jtl), 'o.xlsx'])['steps'] == convert.DEFAULT_STEP_PATTERN
+
+
+def test_large_file_warning(tmp_path, monkeypatch):
+    monkeypatch.setattr(convert, 'LARGE_FILE_ROWS', 3)
+    f = tmp_path / 'big.jtl'
+    f.write_text('timeStamp,elapsed,label,success\n' + '1,1,a,true\n' * 5, encoding='utf-8')
+    info = convert.create_excel_report(str(f), str(tmp_path / 'o.xlsx'))
+    assert any('большой файл' in w for w in info['warnings'])

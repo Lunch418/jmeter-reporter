@@ -23,6 +23,9 @@ from openpyxl.chart import BarChart, Reference
 
 import verify
 
+# Выше этого числа строк отчет строится долго и держит весь JTL в памяти.
+LARGE_FILE_ROWS = 200_000
+
 # Лимит строк листа Excel (xlsx). Лист 'Исходные данные' обрезается по нему,
 # иначе openpyxl падает на большом JTL уже в момент сохранения.
 EXCEL_MAX_ROWS = 1_048_576
@@ -128,8 +131,8 @@ def to_int(value, default=0):
         return default
 
 
-def parse_jtl_file(jtl_file, limit=None):
-    """Читает JTL (CSV) в список словарей. limit - максимум строк (для предпросмотра)."""
+def iter_jtl_rows(jtl_file, limit=None):
+    """Построчное чтение JTL (CSV): память не растет с размером файла."""
     with open(jtl_file, 'r', encoding='utf-8', errors='replace', newline='') as f:
         head = f.read(200)
         f.seek(0)
@@ -139,10 +142,15 @@ def parse_jtl_file(jtl_file, limit=None):
                 f"В JMeter выставьте jmeter.save.saveservice.output_format=csv "
                 f"и перезапустите тест."
             )
-        reader = csv.DictReader(f)
-        if limit is None:
-            return list(reader)
-        return [row for _, row in zip(range(limit), reader)]
+        for index, row in enumerate(csv.DictReader(f)):
+            if limit is not None and index >= limit:
+                return
+            yield row
+
+
+def parse_jtl_file(jtl_file, limit=None):
+    """Читает JTL (CSV) в список словарей. limit - максимум строк (для предпросмотра)."""
+    return list(iter_jtl_rows(jtl_file, limit))
 
 
 def percentile(sorted_values, fraction):
@@ -214,6 +222,9 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
             f"Найдены: {', '.join(jtl_data[0].keys())}"
         )
     warnings = []
+    if len(jtl_data) > LARGE_FILE_ROWS:
+        warnings.append(f"большой файл ({len(jtl_data)} строк): отчет строится долго и требует "
+                        f"много памяти; проверка SLA, сравнение и экспорт (cli.py) читают файл потоком")
     if 'success' not in jtl_data[0]:
         warnings.append("в JTL нет колонки 'success' - все замеры будут учтены как ошибочные")
 
@@ -494,6 +505,8 @@ USAGE = (
     "  --standard F   standardResults.xml: сверить расчёт с цифрами JMeter.\n"
     "  --dashboard F  dashBoard_jmeter.xml: то же, по average/median/90/95.\n"
     "                 (в четырёхаргументной форме оба файла берутся из позиций)\n"
+    "  --config F     report.toml с умолчаниями (пояс, шаги); по умолчанию берется\n"
+    "                 report.toml из текущей папки, если он есть.\n"
     "  --steps RE  Регулярное выражение для шагов на листе 'График времени'.\n"
     "              По умолчанию '^\\d{2}\\.' (метки вида '01. ...').\n"
     "  --tz ПОЯС   Часовой пояс для меток времени в отчёте.\n"
@@ -502,13 +515,13 @@ USAGE = (
 )
 
 
-VALUE_OPTIONS = ('--tz', '--steps', '--standard', '--dashboard')
+VALUE_OPTIONS = ('--tz', '--steps', '--standard', '--dashboard', '--config')
 
 
 def parse_args(argv):
     """Разбор командной строки. Возвращает словарь параметров."""
-    options = {'--tz': None, '--steps': DEFAULT_STEP_PATTERN,
-               '--standard': None, '--dashboard': None}
+    options = {'--tz': None, '--steps': None, '--standard': None, '--dashboard': None,
+               '--config': None}
     positional = []
     i = 0
     while i < len(argv):
@@ -541,6 +554,17 @@ def parse_args(argv):
         options['--standard'] = options['--standard'] or standard
     else:
         sys.exit(USAGE)
+
+    # report.toml (рядом с запуском или из --config) задает значения по умолчанию.
+    import config
+    try:
+        cfg = config.load_for(options['--config'], os.getcwd())
+    except ReportError as exc:
+        sys.exit(str(exc))
+    if cfg:
+        options['--tz'] = options['--tz'] or cfg.timezone
+        options['--steps'] = options['--steps'] or cfg.steps
+    options['--steps'] = options['--steps'] or DEFAULT_STEP_PATTERN
 
     for path in (jtl_file, options['--standard'], options['--dashboard']):
         if path and not os.path.isfile(path):

@@ -10,7 +10,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY convert.py verify.py preview.py tui.py docker-entrypoint.sh ./
+COPY *.py report.example.toml docker-entrypoint.sh ./
 COPY tools/ tools/
 COPY samples/ samples/
 RUN chmod +x docker-entrypoint.sh
