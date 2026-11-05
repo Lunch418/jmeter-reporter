@@ -9,7 +9,8 @@ from jmeter_reporter.timeutil import resolve_timezone
 
 SAMPLES = Path(__file__).resolve().parent.parent / 'samples'
 # sha256 over sheet names, chart counts, every cell value and number format of the report
-GOLDEN = '44df32a40f644daa04d15d23879e9c4c9a058132c2ed395032d044bdd981531a'
+# (no 'Сверка' sheet since 1.3: it is not for the customer; the other sheets are byte-for-byte as before)
+GOLDEN = 'eb43fa4ffdcd29f8188fb5527df234f7df709937c82406aa83e8166f165aca88'
 
 
 def fingerprint(path):

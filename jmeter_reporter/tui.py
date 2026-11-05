@@ -595,7 +595,10 @@ class ReportApp(App):
             self.say(f'сверка с XML: все {check["checked"]} значений совпали', OK)
         else:
             self.say(f'сверка с XML: расхождений {check["mismatches"]} из {check["checked"]} '
-                     f'(см. лист "Сверка")', WARN)
+                     f'(в Excel-отчет не попадает)', WARN)
+            for row in check['details'][:5]:
+                self.say(f'  {row["label"][:30]} / {row["metric"]}: в XML {row["expected"]}, '
+                         f'по JTL {row["actual"]}', WARN)
         for warning in info['warnings']:
             if not warning.startswith('сверка'):
                 self.say(f'внимание: {warning}', WARN)

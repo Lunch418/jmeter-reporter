@@ -134,4 +134,4 @@ def compare(stats, expected, source):
 def summarize(rows):
     mismatches = [r for r in rows if not r['ok']]
     return {'checked': len(rows), 'mismatches': len(mismatches),
-            'ok': not mismatches}
+            'ok': not mismatches, 'details': mismatches}

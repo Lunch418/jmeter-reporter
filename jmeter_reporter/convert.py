@@ -121,7 +121,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     check = verify.summarize(check_rows) if (standard_xml or dashboard_xml) else None
     if check and not check['ok']:
         warnings_after = (f"сверка с XML: {check['mismatches']} расхождений из "
-                          f"{check['checked']} (см. лист 'Сверка')")
+                          f"{check['checked']} (список в консоли; в Excel-отчет не попадает)")
     else:
         warnings_after = None
 
@@ -267,40 +267,6 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
         lengths = [len(str(ws2.cell(row=r, column=col).value or ''))
                    for r in range(HEADER_ROW, r_idx)]
         ws2.column_dimensions[get_column_letter(col)].width = min(max(lengths or [8]) + 2, 30)
-
-    # ================= ЛИСТ: СВЕРКА С XML =================
-    if check_rows:
-        ws_check = wb.create_sheet('Сверка')
-        ws_check['A1'] = 'Сверка расчёта по JTL с артефактами Jenkins'
-        ws_check['A1'].font = header_font_bold_16
-        ws_check.merge_cells('A1:F1')
-        verdict = ('Расхождений нет' if check['ok']
-                   else f"Расхождений: {check['mismatches']} из {check['checked']}")
-        ws_check['A2'] = f"Проверено значений: {check['checked']}. {verdict}."
-        ws_check['A2'].font = header_font_bold_11
-        bad_fill = PatternFill(start_color='F8CBAD', end_color='F8CBAD', fill_type='solid')
-        ok_fill = PatternFill(start_color='E2F0D9', end_color='E2F0D9', fill_type='solid')
-        check_headers = ['Label', 'Метрика', 'Источник', 'В XML', 'Посчитано по JTL', 'Результат']
-        for col, header in enumerate(check_headers, 1):
-            cell = ws_check.cell(row=4, column=col, value=header)
-            cell.font = header_font_white
-            cell.fill = header_fill_blue
-            cell.border = thin_border
-            cell.alignment = Alignment(horizontal='center')
-        # Расхождения наверх, чтобы их не пришлось искать.
-        for r, row in enumerate(sorted(check_rows, key=lambda x: x['ok']), start=5):
-            if row['actual'] is None:
-                result = 'нет в JTL'
-            else:
-                result = 'OK' if row['ok'] else 'РАСХОЖДЕНИЕ'
-            values = [row['label'], row['metric'], row['source'], row['expected'],
-                      row['actual'] if row['actual'] is not None else '', result]
-            for col, val in enumerate(values, 1):
-                cell = ws_check.cell(row=r, column=col, value=val)
-                cell.border = thin_border
-                cell.fill = ok_fill if row['ok'] else bad_fill
-        for col, width in enumerate([42, 14, 22, 12, 18, 14], 1):
-            ws_check.column_dimensions[get_column_letter(col)].width = width
 
     # ================= ЛИСТ 3: ИСХОДНЫЕ ДАННЫЕ =================
     raw_stream = None
@@ -510,6 +476,11 @@ def main(argv=None):
         v = info['verification']
         print(f"   Сверка с XML: {'расхождений нет' if v['ok'] else str(v['mismatches']) + ' расхождений'}"
               f" (проверено {v['checked']})")
+        for row in v['details'][:10]:
+            print(f"      {row['label']} / {row['metric']} ({row['source']}): "
+                  f"в XML {row['expected']}, по JTL {row['actual']}")
+        if len(v['details']) > 10:
+            print(f"      ... и еще {len(v['details']) - 10}")
     return 0
 
 

@@ -6,6 +6,9 @@ The Excel report is covered by a golden test: it does not change between version
 ## [Unreleased]
 
 ### Breaking
+- The Excel report no longer has the 'Сверка' sheet (it was not meant for the customer). The
+  XML cross-check still runs and prints its result and the list of mismatches in the console
+  and in the UI log. The other sheets are identical to before.
 - Python 3.10 or newer is required (3.8 and 3.9 are dropped; the fixed-offset fallback table
   for Russian time zones is gone, named zones use the system zoneinfo database).
 - Names that `convert.py` used to re-export (`ReportError`, `to_int`, `percentile`,

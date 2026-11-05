@@ -32,7 +32,7 @@ def test_remaining_sheets_are_identical(sample_jtl, sample_xml, tmp_path):
     kw = dict(standard_xml=str(std), dashboard_xml=str(dash))
     build(sample_jtl, full, **kw)
     build(sample_jtl, slim, include_raw_data=False, **kw)
-    for sheet in ('Сводка', 'График времени', 'Сверка'):
+    for sheet in ('Сводка', 'График времени'):
         assert cells(full, sheet) == cells(slim, sheet), sheet
     assert len(load_workbook(slim)['График времени']._charts) == 1
 

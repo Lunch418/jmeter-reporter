@@ -84,17 +84,18 @@ def test_wrong_files_are_rejected(tmp_path):
         verify.parse_dashboard(f, ReportError)
 
 
-def test_report_gets_check_sheet(sample_jtl, sample_xml, tmp_path):
+def test_report_has_no_check_sheet_but_reports_the_result(sample_jtl, sample_xml, tmp_path):
     std, dash = sample_xml
     out = tmp_path / 'r.xlsx'
     info = convert.create_excel_report(str(sample_jtl), str(out), standard_xml=str(std),
                                        dashboard_xml=str(dash))
-    assert info['sheets'] == ['Сводка', 'График времени', 'Сверка', 'Исходные данные']
-    assert info['verification']['ok']
-    assert 'Расхождений нет' in load_workbook(out)['Сверка']['A2'].value
+    # The customer's report has no cross-check page: the result goes to the console / UI only.
+    assert info['sheets'] == ['Сводка', 'График времени', 'Исходные данные']
+    assert 'Сверка' not in load_workbook(out).sheetnames
+    assert info['verification']['ok'] and info['verification']['details'] == []
 
 
-def test_report_flags_mismatch_on_top(sample_jtl, sample_xml, tmp_path):
+def test_mismatch_is_reported_outside_the_workbook(sample_jtl, sample_xml, tmp_path):
     std, _ = sample_xml
     std.write_text(std.read_text(encoding='utf-8').replace('<max>', '<max>7', 1),
                    encoding='utf-8')
@@ -102,10 +103,11 @@ def test_report_flags_mismatch_on_top(sample_jtl, sample_xml, tmp_path):
     info = convert.create_excel_report(str(sample_jtl), str(out), standard_xml=str(std))
     assert not info['verification']['ok']
     assert any('расхожд' in w for w in info['warnings'])
-    ws = load_workbook(out)['Сверка']
-    assert ws['F5'].value == 'РАСХОЖДЕНИЕ'  # mismatches are sorted to the top
+    assert 'Сверка' not in load_workbook(out).sheetnames
+    detail = info['verification']['details'][0]
+    assert detail['ok'] is False and {'label', 'metric', 'expected', 'actual'} <= set(detail)
 
 
-def test_without_xml_no_check_sheet(sample_jtl, tmp_path):
+def test_without_xml_there_is_no_verification(sample_jtl, tmp_path):
     info = convert.create_excel_report(str(sample_jtl), str(tmp_path / 'r.xlsx'))
     assert info['verification'] is None and 'Сверка' not in info['sheets']
