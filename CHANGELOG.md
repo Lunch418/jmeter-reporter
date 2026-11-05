@@ -3,6 +3,25 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
+## [Unreleased]
+
+### Breaking
+- Python 3.10 or newer is required (3.8 and 3.9 are dropped; the fixed-offset fallback table
+  for Russian time zones is gone, named zones use the system zoneinfo database).
+- Names that `convert.py` used to re-export (`ReportError`, `to_int`, `percentile`,
+  `resolve_timezone`, ...) now live in their own modules (`errors`, `jtl`, `stats`,
+  `timeutil`, `safety`). The old names still work, raise `DeprecationWarning` and will be
+  removed in 2.0.
+- The 1.2.0 move into the `jmeter_reporter` package changed import paths; it should have been
+  announced as breaking.
+
+### Changed
+- The 'raw data' sheet is streamed straight into the .xlsx archive: 405 000 rows take about
+  34 MB of memory instead of several GB. Cells look and read the same (golden test).
+- The report is written to a temporary file and moved into place at the end: a failed build
+  keeps the previous report, and the old version goes to `history/` only after success.
+- `cli.py` returns exit code 2 for unreadable files and CSV errors (was 1 or a traceback).
+
 ## [1.2.0] - 2026-11-05
 
 ### Fixed
