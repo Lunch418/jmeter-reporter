@@ -20,6 +20,8 @@ RUN chmod +x docker-entrypoint.sh
 FROM base AS test
 COPY requirements-dev.txt .
 RUN pip install --no-cache-dir -r requirements-dev.txt
+COPY README.md CHANGELOG.md ./
+COPY docs/ docs/
 COPY tests/ tests/
 RUN python -m pytest -q
 
