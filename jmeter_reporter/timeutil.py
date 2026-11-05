@@ -2,23 +2,16 @@
 import re
 from datetime import datetime, timedelta, timezone
 
+from zoneinfo import ZoneInfo
+
 from .errors import ReportError
-
-# Запасной вариант для Python без zoneinfo (3.8): действует только для этих имен.
-FIXED_ZONES = {
-    'Europe/Kaliningrad': 2, 'Europe/Moscow': 3, 'Europe/Samara': 4,
-    'Asia/Yekaterinburg': 5, 'Asia/Omsk': 6, 'Asia/Novosibirsk': 7, 'Asia/Krasnoyarsk': 7,
-    'Asia/Irkutsk': 8, 'Asia/Yakutsk': 9, 'Asia/Vladivostok': 10, 'Asia/Magadan': 11,
-    'Asia/Kamchatka': 12,
-}
-
 
 def resolve_timezone(spec):
     """Часовой пояс для отображения меток времени.
 
     None или 'local' -> локальный пояс машины (значение по умолчанию).
     'UTC' -> работает везде; 'Europe/Moscow', 'Asia/Yekaterinburg' -> именованный пояс
-    (нужен Python 3.9+; на 3.8 российские пояса берутся из таблицы FIXED_ZONES).
+    (системная база zoneinfo; на Windows нужен пакет tzdata).
     '+05:00', '-03:30', '+5' -> фиксированное смещение, работает на любом Python.
     """
     if spec is None or spec.strip().lower() == 'local':
@@ -34,24 +27,6 @@ def resolve_timezone(spec):
 
     if spec.upper() in ('UTC', 'GMT', 'Z'):
         return timezone.utc  # не требует базы часовых поясов
-
-    try:
-        from zoneinfo import ZoneInfo
-    except ImportError:
-        try:  # Python 3.8: пакет-бэкпорт, если он случайно установлен
-            from backports.zoneinfo import ZoneInfo
-        except ImportError:
-            ZoneInfo = None
-    if ZoneInfo is None:
-        # Python 3.8 без zoneinfo: российские пояса как фиксированные сдвиги (в России
-        # нет перехода на летнее время с 2014 года), остальные - только смещением.
-        hours = FIXED_ZONES.get(spec)
-        if hours is not None:
-            return timezone(timedelta(hours=hours))
-        raise ReportError(
-            f"Именованный часовой пояс '{spec}' требует Python 3.9+.\n"
-            f"На более старой версии укажите смещение явно, например: --tz +03:00"
-        )
 
     try:
         return ZoneInfo(spec)

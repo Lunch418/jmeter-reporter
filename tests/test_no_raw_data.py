@@ -3,10 +3,12 @@ from openpyxl import load_workbook
 
 from jmeter_reporter import config
 from jmeter_reporter import convert
+from jmeter_reporter.errors import ReportError
+from jmeter_reporter.timeutil import resolve_timezone
 
 
 def build(jtl, out, **kw):
-    return convert.create_excel_report(str(jtl), str(out), tz=convert.resolve_timezone('UTC'), **kw)
+    return convert.create_excel_report(str(jtl), str(out), tz=resolve_timezone('UTC'), **kw)
 
 
 def cells(path, sheet):
@@ -61,22 +63,12 @@ def test_missing_success_column_still_warns(tmp_path):
 def test_bad_files_are_still_rejected(tmp_path):
     bad = tmp_path / 'bad.jtl'
     bad.write_text('a,b\n1,2\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='обязательных колонок'):
+    with pytest.raises(ReportError, match='обязательных колонок'):
         build(bad, tmp_path / 'o.xlsx', include_raw_data=False)
     empty = tmp_path / 'e.jtl'
     empty.write_text('timeStamp,elapsed,label\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='пуст'):
+    with pytest.raises(ReportError, match='пуст'):
         build(empty, tmp_path / 'o.xlsx', include_raw_data=False)
-
-
-def test_large_file_warning_mentions_the_flag(tmp_path, monkeypatch):
-    monkeypatch.setattr(convert, 'LARGE_FILE_ROWS', 2)
-    f = tmp_path / 'x.jtl'
-    f.write_text('timeStamp,elapsed,label,success\n' + '1,1,a,true\n' * 4, encoding='utf-8')
-    assert any('--no-raw-data' in w for w in build(f, tmp_path / 'a.xlsx')['warnings'])
-    # no raw sheet -> no memory/row-limit problem -> no warning
-    assert not any('большой файл' in w
-                   for w in build(f, tmp_path / 'b.xlsx', include_raw_data=False)['warnings'])
 
 
 # ------------------------------------------------------------ CLI / config ----
@@ -97,7 +89,7 @@ def test_config_default_and_cli_override(sample_jtl, tmp_path, monkeypatch):
 def test_config_validates_the_flag(tmp_path):
     path = tmp_path / 'report.toml'
     path.write_text('[report]\ninclude_raw_data = "no"\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='true или false'):
+    with pytest.raises(ReportError, match='true или false'):
         config.load_config(str(path))
     path.write_text('[report]\ninclude_raw_data = true\n', encoding='utf-8')
     assert config.load_config(str(path)).include_raw_data is True

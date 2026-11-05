@@ -4,8 +4,8 @@ pytest.importorskip("rich")  # comes with textual; the interface is optional
 
 from rich.console import Console
 
-from jmeter_reporter import convert
 from jmeter_reporter import preview
+from jmeter_reporter.errors import ReportError
 
 
 def _text(renderable, width=100):
@@ -54,15 +54,15 @@ def test_many_labels_are_collapsed(tmp_path):
 def test_bad_files_raise_report_error(tmp_path):
     empty = tmp_path / 'e.jtl'
     empty.write_text('timeStamp,elapsed,label\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         preview.summarize_jtl(empty)
     wrong = tmp_path / 'w.jtl'
     wrong.write_text('a,b\n1,2\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='колонок'):
+    with pytest.raises(ReportError, match='колонок'):
         preview.summarize_jtl(wrong)
     xml = tmp_path / 'x.jtl'
     xml.write_text('<testResults/>', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='XML'):
+    with pytest.raises(ReportError, match='XML'):
         preview.summarize_jtl(xml)
 
 

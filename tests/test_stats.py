@@ -2,20 +2,22 @@ from collections import defaultdict
 
 import pytest
 
-from jmeter_reporter import convert
 from jmeter_reporter import stats
+from jmeter_reporter.errors import ReportError
+from jmeter_reporter.jtl import parse_jtl_file
+from jmeter_reporter.stats import stats_of_rows
 
 
 def test_streaming_matches_report_formulas(sample_jtl):
     run = stats.load_run(sample_jtl)
-    rows = convert.parse_jtl_file(str(sample_jtl))
+    rows = parse_jtl_file(str(sample_jtl))
     grouped = defaultdict(list)
     for row in rows:
         grouped[row['label']].append(row)
     assert list(run.labels) == list(grouped)  # file order is kept
     for label, group in grouped.items():
-        assert run.labels[label] == dict(convert.collect_stats(group), label=label)
-    assert {k: v for k, v in run.total.items() if k != 'label'} == convert.collect_stats(rows)
+        assert run.labels[label] == dict(stats_of_rows(group), label=label)
+    assert {k: v for k, v in run.total.items() if k != 'label'} == stats_of_rows(rows)
     assert run.rows == len(rows)
 
 
@@ -33,7 +35,7 @@ def test_steps_filter(sample_jtl):
     run = stats.load_run(sample_jtl)
     assert len(run.steps(r'^\d{2}\.')) == 10
     assert run.steps(r'^ZZZ') == []
-    with pytest.raises(convert.ReportError, match='регулярное'):
+    with pytest.raises(ReportError, match='регулярное'):
         run.steps('(')
 
 
@@ -57,5 +59,5 @@ def test_missing_success_column_counts_as_errors(tmp_path):
 def test_bad_files(tmp_path, content, match):
     f = tmp_path / 'bad.jtl'
     f.write_text(content, encoding='utf-8')
-    with pytest.raises(convert.ReportError, match=match):
+    with pytest.raises(ReportError, match=match):
         stats.load_run(f)

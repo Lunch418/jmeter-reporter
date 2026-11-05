@@ -4,7 +4,7 @@ Run it on a machine WITH internet access:
 
     python tools/make_offline_bundle.py                 # core only (openpyxl)
     python tools/make_offline_bundle.py --with-tui      # plus textual and its dependencies
-    python tools/make_offline_bundle.py --python-version 3.9 --platform manylinux2014_x86_64
+    python tools/make_offline_bundle.py --python-version 3.10 --platform manylinux2014_x86_64
 
 The result is dist/jmeter-report-<version>-offline.zip with the program files, the wheels,
 SHA256SUMS and a short INSTALL.txt. Copy the zip into the closed contour and follow
@@ -101,7 +101,7 @@ def build(with_tui=False, python_version=None, platform=None, out_dir=None, skip
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     parser.add_argument('--with-tui', action='store_true', help='include textual and friends')
-    parser.add_argument('--python-version', help='target Python, e.g. 3.9')
+    parser.add_argument('--python-version', help='target Python, e.g. 3.10')
     parser.add_argument('--platform', help='target pip platform tag, e.g. manylinux2014_x86_64')
     parser.add_argument('--out', help='output folder (default: dist)')
     parser.add_argument('--no-download', action='store_true', help='program files only')

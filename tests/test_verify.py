@@ -3,14 +3,17 @@ from openpyxl import load_workbook
 
 from jmeter_reporter import convert
 from jmeter_reporter import verify
+from jmeter_reporter.errors import ReportError
+from jmeter_reporter.jtl import parse_jtl_file
+from jmeter_reporter.stats import stats_of_rows
 
 
 def _stats(sample_jtl):
-    rows = convert.parse_jtl_file(str(sample_jtl))
+    rows = parse_jtl_file(str(sample_jtl))
     grouped = {}
     for r in rows:
         grouped.setdefault(r['label'], []).append(r)
-    return [dict(convert.collect_stats(v), label=k) for k, v in grouped.items()]
+    return [dict(stats_of_rows(v), label=k) for k, v in grouped.items()]
 
 
 def test_standard_results_parsing(sample_xml):
@@ -68,17 +71,17 @@ def test_error_percent_tolerance():
 def test_broken_standard_xml(tmp_path):
     f = tmp_path / 's.xml'
     f.write_text('<results><api>', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='XML'):
-        verify.parse_standard_results(f, convert.ReportError)
+    with pytest.raises(ReportError, match='XML'):
+        verify.parse_standard_results(f, ReportError)
 
 
 def test_wrong_files_are_rejected(tmp_path):
     f = tmp_path / 'e.xml'
     f.write_text('<results></results>', encoding='utf-8')
-    with pytest.raises(convert.ReportError):
-        verify.parse_standard_results(f, convert.ReportError)
-    with pytest.raises(convert.ReportError):
-        verify.parse_dashboard(f, convert.ReportError)
+    with pytest.raises(ReportError):
+        verify.parse_standard_results(f, ReportError)
+    with pytest.raises(ReportError):
+        verify.parse_dashboard(f, ReportError)
 
 
 def test_report_gets_check_sheet(sample_jtl, sample_xml, tmp_path):

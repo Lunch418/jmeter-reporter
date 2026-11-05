@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from jmeter_reporter import config
-from jmeter_reporter import convert
+from jmeter_reporter.errors import ReportError
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,7 +41,7 @@ def test_defaults_when_sections_missing(tmp_path):
     ('[report\n', 'Ошибка в конфиге'),
 ])
 def test_invalid_config_is_rejected(tmp_path, text, match):
-    with pytest.raises(convert.ReportError, match=match):
+    with pytest.raises(ReportError, match=match):
         config.load_config(write(tmp_path, text))
 
 
@@ -59,7 +59,7 @@ def test_find_config_picks_first_folder(tmp_path):
 
 
 def test_load_for_explicit_missing_is_an_error(tmp_path):
-    with pytest.raises(convert.ReportError, match='не найден'):
+    with pytest.raises(ReportError, match='не найден'):
         config.load_for(str(tmp_path / 'no.toml'))
 
 

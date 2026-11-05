@@ -1,8 +1,8 @@
 import pytest
 
 from jmeter_reporter import config
-from jmeter_reporter import convert
 from jmeter_reporter import workflow
+from jmeter_reporter.errors import ReportError
 
 
 def cfg_with(tmp_path, text):
@@ -61,5 +61,5 @@ def test_html_includes_verdict_from_config(sample_jtl, tmp_path):
 def test_bad_input_raises(tmp_path):
     bad = tmp_path / 'bad.jtl'
     bad.write_text('a,b\n1,2\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         workflow.run_extras(str(bad), str(tmp_path / 'r.xlsx'), exports=['csv'])

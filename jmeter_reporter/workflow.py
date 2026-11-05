@@ -2,10 +2,10 @@
 import os
 
 from . import compare
-from . import convert
 from . import export
 from . import sla
 from . import stats
+from .stats import DEFAULT_STEP_PATTERN
 
 
 def extra_paths(output):
@@ -14,7 +14,7 @@ def extra_paths(output):
     return {'compare': stem + '_compare.xlsx', 'html': stem + '.html', 'csv': stem + '.csv'}
 
 
-def run_extras(jtl, output, cfg=None, tz=None, steps=convert.DEFAULT_STEP_PATTERN,
+def run_extras(jtl, output, cfg=None, tz=None, steps=DEFAULT_STEP_PATTERN,
                baseline=None, exports=None, tolerance=None, run=None):
     """Compute the optional outputs. The Excel report itself is built by convert.py.
 

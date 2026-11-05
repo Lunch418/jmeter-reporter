@@ -2,8 +2,8 @@ import pytest
 from openpyxl import load_workbook
 
 from jmeter_reporter import compare
-from jmeter_reporter import convert
 from jmeter_reporter import stats
+from jmeter_reporter.errors import ReportError
 
 
 def _cmp(base, new, *args, **kwargs):
@@ -84,7 +84,7 @@ def test_all_labels_mode(make_run):
 
 def test_negative_tolerance_rejected(make_run):
     run = make_run([('01. A', 1, True)])
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         _cmp(run, run, tolerance=-1)
 
 
@@ -117,5 +117,5 @@ def test_comparison_workbook(make_run, tmp_path):
 
 def test_comparison_write_error(make_run, tmp_path):
     run = make_run([('01. A', 1, True)])
-    with pytest.raises(convert.ReportError, match='сохранить'):
+    with pytest.raises(ReportError, match='сохранить'):
         compare.write_comparison_xlsx(_cmp(run, run), tmp_path / 'no' / 'x.xlsx')

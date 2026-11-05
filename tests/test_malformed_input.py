@@ -7,6 +7,9 @@ from jmeter_reporter import export
 from jmeter_reporter import jtl as jtl_module
 from jmeter_reporter import sla
 from jmeter_reporter import stats
+from jmeter_reporter.errors import ReportError
+from jmeter_reporter.stats import percentile
+from jmeter_reporter.timeutil import resolve_timezone
 
 HEADER = 'timeStamp,elapsed,label,responseCode,success,bytes\n'
 
@@ -29,7 +32,7 @@ def write(tmp_path, body, header=HEADER, name='r.jtl', encoding='utf-8'):
     ([5, 6, 7], 0.99, 7),
 ])
 def test_percentile_matches_jmeter_math_round(values, fraction, expected):
-    assert convert.percentile(values, fraction) == expected
+    assert percentile(values, fraction) == expected
 
 
 def jmeter_reference(values, p):
@@ -47,7 +50,7 @@ def test_percentile_against_reference_for_many_sizes():
     for n in range(1, 120):
         values = sorted((i * 7) % 53 for i in range(n))
         for p in (0.5, 0.9, 0.95, 0.99):
-            assert convert.percentile(values, p) == jmeter_reference(values, p), (n, p)
+            assert percentile(values, p) == jmeter_reference(values, p), (n, p)
 
 
 # ---- P0-3: formula injection --------------------------------------------------
@@ -61,7 +64,7 @@ def test_formula_label_is_text_in_excel(tmp_path):
     jtl = write(tmp_path, f'1700000000000,10,{EVIL_CSV},200,true,5\n'
                           f'1700000001000,12,{EVIL_CSV},200,true,5\n')
     out = tmp_path / 'r.xlsx'
-    convert.create_excel_report(jtl, str(out), tz=convert.resolve_timezone('UTC'))
+    convert.create_excel_report(jtl, str(out), tz=resolve_timezone('UTC'))
     wb = load_workbook(out)
     for ws in wb.worksheets:
         for row in ws.iter_rows():
@@ -74,7 +77,7 @@ def test_formula_in_raw_message_is_text(tmp_path):
     jtl = write(tmp_path, '1700000000000,10,A,200,true,5,"=1+1"\n',
                 header=HEADER.strip() + ',responseMessage\n')
     out = tmp_path / 'r.xlsx'
-    convert.create_excel_report(jtl, str(out), tz=convert.resolve_timezone('UTC'))
+    convert.create_excel_report(jtl, str(out), tz=resolve_timezone('UTC'))
     ws = load_workbook(out)['Исходные данные']
     assert all(c.data_type != 'f' for row in ws.iter_rows() for c in row)
 
@@ -100,14 +103,14 @@ def test_truncated_last_line_is_skipped_with_a_warning(tmp_path):
 def test_truncated_line_in_the_middle_is_an_error(tmp_path):
     jtl = write(tmp_path, '1700000000000,10,A,200,true,5\n1700000001000,1\n'
                           '1700000002000,10,A,200,true,5\n')
-    with pytest.raises(convert.ReportError, match='строка 3'):
+    with pytest.raises(ReportError, match='строка 3'):
         stats.load_run(jtl)
 
 
 def test_excel_report_survives_truncated_tail(tmp_path):
     jtl = write(tmp_path, '1700000000000,10,A,200,true,5\n1700000001000,1')
     info = convert.create_excel_report(jtl, str(tmp_path / 'r.xlsx'),
-                                       tz=convert.resolve_timezone('UTC'))
+                                       tz=resolve_timezone('UTC'))
     assert info['rows'] == 1
     assert any('оборвана' in w for w in info['warnings'])
 
@@ -116,15 +119,15 @@ def test_excel_report_survives_truncated_tail(tmp_path):
 
 def test_non_numeric_timestamp_is_an_error_with_hint(tmp_path):
     jtl = write(tmp_path, '2026/11/05 10:00:00.000,10,A,200,true,5\n')
-    with pytest.raises(convert.ReportError, match='timestamp_format'):
+    with pytest.raises(ReportError, match='timestamp_format'):
         stats.load_run(jtl)
-    with pytest.raises(convert.ReportError, match='строка 2'):
+    with pytest.raises(ReportError, match='строка 2'):
         convert.create_excel_report(jtl, str(tmp_path / 'r.xlsx'))
 
 
 def test_empty_elapsed_is_an_error(tmp_path):
     jtl = write(tmp_path, '1700000000000,,A,200,true,5\n')
-    with pytest.raises(convert.ReportError, match='elapsed'):
+    with pytest.raises(ReportError, match='elapsed'):
         stats.load_run(jtl)
 
 
@@ -135,7 +138,7 @@ def test_sla_error_pct_without_success_column_is_refused(tmp_path):
                 header='timeStamp,elapsed,label,responseCode\n')
     run = stats.load_run(jtl)
     cfg = sla.normalize({'error_pct': 1, 'scope': 'all'})
-    with pytest.raises(convert.ReportError, match='success'):
+    with pytest.raises(ReportError, match='success'):
         sla.evaluate(run, cfg)
 
 
@@ -143,7 +146,7 @@ def test_sla_error_pct_without_success_column_is_refused(tmp_path):
 
 def test_cp1251_file_gives_a_clear_error_not_mojibake(tmp_path):
     jtl = write(tmp_path, '1700000000000,10,Главная,200,true,5\n', encoding='cp1251')
-    with pytest.raises(convert.ReportError, match='JTL_ENCODING'):
+    with pytest.raises(ReportError, match='JTL_ENCODING'):
         stats.load_run(jtl)
 
 
@@ -201,3 +204,60 @@ def test_html_uses_exact_error_count(tmp_path):
     run = stats.load_run(write(tmp_path, body))
     page = export.render_html(run)
     assert run.errors == 3 and '>3<' in page.replace(' ', '')
+
+
+# ---- exit codes of cli.py: input problems are 2, never a Python traceback or 1 ---------------
+
+def test_cli_missing_file_is_exit_2(tmp_path, capsys):
+    from jmeter_reporter import cli
+    assert cli.main(['export', str(tmp_path / 'no.jtl'), '--format', 'csv']) == 2
+    assert 'не найден' in capsys.readouterr().err
+
+
+def test_cli_directory_instead_of_file_is_exit_2(tmp_path):
+    from jmeter_reporter import cli
+    assert cli.main(['export', str(tmp_path), '--format', 'csv']) == 2
+
+
+def test_cli_csv_error_is_exit_2(tmp_path):
+    from jmeter_reporter import cli
+    path = tmp_path / 'x.jtl'
+    path.write_bytes(HEADER.encode() + b'1700000000000,10,' + b'x' * 300_000 + b',200,true,5\n')
+    assert cli.main(['export', str(path), '--format', 'csv']) == 2
+
+
+def test_cli_unwritable_output_is_exit_2(tmp_path, sample_jtl):
+    from jmeter_reporter import cli
+    out = tmp_path / 'no' / 'such' / 'dir' / 'c.csv'
+    assert cli.main(['export', str(sample_jtl), '--format', 'csv', '-o', str(out)]) == 2
+
+
+def test_failed_build_keeps_the_previous_report(tmp_path, sample_jtl):
+    out = tmp_path / 'r.xlsx'
+    convert.create_excel_report(str(sample_jtl), str(out))
+    before = out.read_bytes()
+    bad = write(tmp_path, '2026/11/05,10,A,200,true,5\n', name='bad.jtl')
+    with pytest.raises(ReportError):
+        convert.create_excel_report(bad, str(out))
+    assert out.read_bytes() == before
+    assert not list(tmp_path.glob('*.tmp'))
+
+
+def test_history_archive_happens_only_after_a_successful_build(tmp_path, sample_jtl):
+    from jmeter_reporter import history
+    out = tmp_path / 'r.xlsx'
+    convert.create_excel_report(str(sample_jtl), str(out))
+    bad = write(tmp_path, '2026/11/05,10,A,200,true,5\n', name='bad.jtl')
+    with pytest.raises(ReportError):
+        convert.create_excel_report(bad, str(out), archive=lambda: history.archive_existing(out))
+    assert out.exists() and not (tmp_path / 'history').exists()
+    info = convert.create_excel_report(str(sample_jtl), str(out),
+                                       archive=lambda: history.archive_existing(out))
+    assert len(info['archived']) == 1 and out.exists()
+
+
+def test_old_convert_names_still_work_but_warn():
+    with pytest.warns(DeprecationWarning, match='removed in 2.0'):
+        assert convert.to_int('7') == 7
+    with pytest.warns(DeprecationWarning):
+        assert convert.ReportError is ReportError

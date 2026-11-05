@@ -14,11 +14,13 @@ import sys
 
 from . import compare
 from . import config
-from . import convert
 from . import export
 from . import sla
 from . import stats
 from . import workflow
+from .errors import ReportError
+from .stats import DEFAULT_STEP_PATTERN
+from .timeutil import resolve_timezone
 
 
 def _load_config(args):
@@ -26,17 +28,17 @@ def _load_config(args):
 
 
 def _steps(args, cfg):
-    return args.steps or (cfg.steps if cfg else None) or convert.DEFAULT_STEP_PATTERN
+    return args.steps or (cfg.steps if cfg else None) or DEFAULT_STEP_PATTERN
 
 
 def _tz(args, cfg):
-    return convert.resolve_timezone(args.tz or (cfg.timezone if cfg else None))
+    return resolve_timezone(args.tz or (cfg.timezone if cfg else None))
 
 
 def cmd_check(args):
     cfg = _load_config(args)
     if not cfg or not cfg.sla:
-        raise convert.ReportError(
+        raise ReportError(
             "Нет раздела [sla]: создайте report.toml (пример: report.example.toml) "
             "или укажите --config.")
     run = stats.load_run(args.jtl)
@@ -134,8 +136,12 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
         return args.func(args)
-    except convert.ReportError as exc:
+    except ReportError as exc:
         print(str(exc), file=sys.stderr)
+        return 2
+    except OSError as exc:  # unreadable / unwritable file: still an input problem, not "FAIL"
+        print(f"{exc.strerror or exc}: {getattr(exc, 'filename', '') or ''}".strip(': '),
+              file=sys.stderr)
         return 2
 
 

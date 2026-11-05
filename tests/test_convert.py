@@ -5,6 +5,10 @@ import pytest
 from openpyxl import load_workbook
 
 from jmeter_reporter import convert
+from jmeter_reporter.errors import ReportError
+from jmeter_reporter.jtl import parse_jtl_file, to_int
+from jmeter_reporter.stats import DEFAULT_STEP_PATTERN, average, percentile, stats_of_rows
+from jmeter_reporter.timeutil import format_duration, format_timestamp, resolve_timezone, timezone_label
 
 
 # ---------------------------------------------------------- statistics ----
@@ -12,24 +16,24 @@ from jmeter_reporter import convert
 def test_percentile_uses_jmeter_formula_not_statistics_median():
     values = [10, 20, 30, 40]
     # JMeter: index round(4 * 0.5) - 1 = 1 -> 20 (statistics.median gave 25)
-    assert convert.percentile(values, 0.50) == 20
-    assert convert.percentile(values, 0.90) == 40
+    assert percentile(values, 0.50) == 20
+    assert percentile(values, 0.90) == 40
 
 
 def test_percentile_single_value():
-    assert convert.percentile([7], 0.99) == 7
+    assert percentile([7], 0.99) == 7
 
 
 def test_average_is_integer_division():
-    assert convert.average([1, 2]) == 1
-    assert convert.average([]) == 0
+    assert average([1, 2]) == 1
+    assert average([]) == 0
 
 
 def test_to_int_tolerates_garbage():
-    assert convert.to_int('12') == 12
-    assert convert.to_int('') == 0
-    assert convert.to_int(None, default=5) == 5
-    assert convert.to_int('abc') == 0
+    assert to_int('12') == 12
+    assert to_int('') == 0
+    assert to_int(None, default=5) == 5
+    assert to_int('abc') == 0
 
 
 def _row(ts, elapsed, ok='true', size='100', sent='10'):
@@ -38,7 +42,7 @@ def _row(ts, elapsed, ok='true', size='100', sent='10'):
 
 
 def test_collect_stats_basic():
-    stats = convert.collect_stats([_row(0, 100), _row(1000, 300, ok='false')])
+    stats = stats_of_rows([_row(0, 100), _row(1000, 300, ok='false')])
     assert stats['samples'] == 2
     assert stats['min'] == 100 and stats['max'] == 300
     assert stats['avg'] == 200
@@ -48,7 +52,7 @@ def test_collect_stats_basic():
 
 
 def test_collect_stats_empty_cells_do_not_crash():
-    stats = convert.collect_stats([{'timeStamp': '0', 'elapsed': '5', 'success': 'true',
+    stats = stats_of_rows([{'timeStamp': '0', 'elapsed': '5', 'success': 'true',
                                     'bytes': '', 'sentBytes': ''}])
     assert stats['received_kb'] == 0
 
@@ -56,28 +60,28 @@ def test_collect_stats_empty_cells_do_not_crash():
 # ---------------------------------------------------------------- time ----
 
 def test_resolve_timezone_variants():
-    assert convert.resolve_timezone(None) is None
-    assert convert.resolve_timezone('local') is None
-    assert convert.resolve_timezone('+05:00').utcoffset(None) == dt.timedelta(hours=5)
-    assert convert.resolve_timezone('UTC-3').utcoffset(None) == dt.timedelta(hours=-3)
-    assert convert.resolve_timezone('Europe/Moscow') is not None
+    assert resolve_timezone(None) is None
+    assert resolve_timezone('local') is None
+    assert resolve_timezone('+05:00').utcoffset(None) == dt.timedelta(hours=5)
+    assert resolve_timezone('UTC-3').utcoffset(None) == dt.timedelta(hours=-3)
+    assert resolve_timezone('Europe/Moscow') is not None
 
 
 def test_resolve_timezone_rejects_unknown():
-    with pytest.raises(convert.ReportError):
-        convert.resolve_timezone('Mars/Olympus')
+    with pytest.raises(ReportError):
+        resolve_timezone('Mars/Olympus')
 
 
 def test_format_timestamp_and_label():
-    tz = convert.resolve_timezone('+03:00')
-    assert convert.format_timestamp(1768471200000, tz) == '15.01.2026 13:00:00.000'
-    assert convert.timezone_label(1768471200000, tz) == 'UTC+03:00'
-    assert convert.format_timestamp('bad', tz) == 'N/A'
+    tz = resolve_timezone('+03:00')
+    assert format_timestamp(1768471200000, tz) == '15.01.2026 13:00:00.000'
+    assert timezone_label(1768471200000, tz) == 'UTC+03:00'
+    assert format_timestamp('bad', tz) == 'N/A'
 
 
 def test_format_duration():
-    assert convert.format_duration(291430) == '4 мин 51,430 сек'
-    assert convert.format_duration(3_661_000).startswith('1 ч 1 мин')
+    assert format_duration(291430) == '4 мин 51,430 сек'
+    assert format_duration(3_661_000).startswith('1 ч 1 мин')
 
 
 # --------------------------------------------------------------- parse ----
@@ -85,21 +89,21 @@ def test_format_duration():
 def test_parse_rejects_xml_jtl(tmp_path):
     f = tmp_path / 'x.jtl'
     f.write_text('<?xml version="1.0"?><testResults/>', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='XML'):
-        convert.parse_jtl_file(str(f))
+    with pytest.raises(ReportError, match='XML'):
+        parse_jtl_file(str(f))
 
 
 def test_empty_jtl_is_an_error(tmp_path):
     f = tmp_path / 'empty.jtl'
     f.write_text('timeStamp,elapsed,label\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='пуст'):
+    with pytest.raises(ReportError, match='пуст'):
         convert.create_excel_report(str(f), str(tmp_path / 'o.xlsx'))
 
 
 def test_missing_required_columns(tmp_path):
     f = tmp_path / 'bad.jtl'
     f.write_text('a,b\n1,2\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='обязательных колонок'):
+    with pytest.raises(ReportError, match='обязательных колонок'):
         convert.create_excel_report(str(f), str(tmp_path / 'o.xlsx'))
 
 
@@ -108,7 +112,7 @@ def test_missing_required_columns(tmp_path):
 def test_report_end_to_end(sample_jtl, tmp_path):
     out = tmp_path / 'report.xlsx'
     info = convert.create_excel_report(str(sample_jtl), str(out),
-                                       tz=convert.resolve_timezone('UTC'))
+                                       tz=resolve_timezone('UTC'))
     assert out.exists()
     assert info['sheets'] == ['Сводка', 'График времени', 'Исходные данные']
     assert info['steps'] == 10
@@ -156,7 +160,7 @@ def test_step_pattern_matching_nothing_gives_no_chart(sample_jtl, tmp_path):
 
 
 def test_invalid_step_pattern(sample_jtl, tmp_path):
-    with pytest.raises(convert.ReportError, match='регулярное'):
+    with pytest.raises(ReportError, match='регулярное'):
         convert.create_excel_report(str(sample_jtl), str(tmp_path / 'r.xlsx'),
                                     step_pattern='(')
 
@@ -172,7 +176,7 @@ def test_missing_success_column_warns(tmp_path):
 
 
 def test_unwritable_output_is_reported(sample_jtl, tmp_path):
-    with pytest.raises(convert.ReportError, match='сохранить'):
+    with pytest.raises(ReportError, match='сохранить'):
         convert.create_excel_report(str(sample_jtl), str(tmp_path / 'no_dir' / 'o.xlsx'))
 
 
@@ -214,22 +218,22 @@ def test_cli_xml_options(sample_jtl, tmp_path):
 
 
 def test_cli_missing_xml_exits(sample_jtl, tmp_path):
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         convert.parse_args([str(sample_jtl), 'o.xlsx', '--standard', str(tmp_path / 'no.xml')])
 
 
 def test_cli_option_without_value_exits(sample_jtl):
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         convert.parse_args([str(sample_jtl), 'o.xlsx', '--tz'])
 
 
 def test_cli_missing_file_exits(tmp_path):
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         convert.parse_args([str(tmp_path / 'nope.jtl'), 'o.xlsx'])
 
 
 def test_cli_wrong_arg_count_exits():
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         convert.parse_args(['only-one'])
 
 
@@ -245,7 +249,7 @@ def test_cli_input_error_returns_exit_code_2(tmp_path, capsys):
 
 def test_parse_args_never_calls_sys_exit(tmp_path):
     for argv in (['only-one'], ['x.jtl', 'o.xlsx', '--tz'], ['--help-me-not']):
-        with pytest.raises(convert.ReportError):
+        with pytest.raises(ReportError):
             convert.parse_args(argv)
 
 
@@ -277,21 +281,13 @@ def test_explicit_config_option(sample_jtl, tmp_path):
 def test_broken_config_stops_the_cli(sample_jtl, tmp_path):
     cfg = tmp_path / 'bad.toml'
     cfg.write_text('[report\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError):
+    with pytest.raises(ReportError):
         convert.parse_args([str(sample_jtl), 'o.xlsx', '--config', str(cfg)])
 
 
 def test_default_steps_without_config(sample_jtl, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    assert convert.parse_args([str(sample_jtl), 'o.xlsx'])['steps'] == convert.DEFAULT_STEP_PATTERN
-
-
-def test_large_file_warning(tmp_path, monkeypatch):
-    monkeypatch.setattr(convert, 'LARGE_FILE_ROWS', 3)
-    f = tmp_path / 'big.jtl'
-    f.write_text('timeStamp,elapsed,label,success\n' + '1,1,a,true\n' * 5, encoding='utf-8')
-    info = convert.create_excel_report(str(f), str(tmp_path / 'o.xlsx'))
-    assert any('большой файл' in w for w in info['warnings'])
+    assert convert.parse_args([str(sample_jtl), 'o.xlsx'])['steps'] == DEFAULT_STEP_PATTERN
 
 
 # ---------------------------------------------- time zones without zoneinfo ----
@@ -306,22 +302,5 @@ def test_utc_does_not_need_zoneinfo(monkeypatch):
         return real_import(name, *a, **k)
 
     monkeypatch.setattr(builtins, '__import__', no_zoneinfo)
-    assert convert.resolve_timezone('UTC').utcoffset(None) == dt.timedelta(0)
-    assert convert.resolve_timezone('gmt').utcoffset(None) == dt.timedelta(0)
-
-
-def test_russian_zones_fall_back_to_fixed_offsets(monkeypatch):
-    import builtins
-    real_import = builtins.__import__
-
-    def no_zoneinfo(name, *a, **k):
-        if name in ('zoneinfo', 'backports.zoneinfo', 'backports'):
-            raise ImportError(name)
-        return real_import(name, *a, **k)
-
-    monkeypatch.setattr(builtins, '__import__', no_zoneinfo)
-    assert convert.resolve_timezone('Europe/Moscow').utcoffset(None) == dt.timedelta(hours=3)
-    assert convert.resolve_timezone('Asia/Vladivostok').utcoffset(None) == dt.timedelta(hours=10)
-    with pytest.raises(convert.ReportError, match='Python 3.9'):
-        convert.resolve_timezone('America/New_York')
-    assert set(convert.FIXED_ZONES) >= {'Europe/Moscow', 'Asia/Yekaterinburg'}
+    assert resolve_timezone('UTC').utcoffset(None) == dt.timedelta(0)
+    assert resolve_timezone('gmt').utcoffset(None) == dt.timedelta(0)

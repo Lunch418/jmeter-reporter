@@ -7,40 +7,43 @@ from rich.console import Group
 from rich.table import Table
 from rich.text import Text
 
-from . import convert
+from .errors import ReportError
+from .jtl import parse_jtl_file, to_int
+from .stats import DEFAULT_STEP_PATTERN, stats_of_rows
+from .timeutil import format_duration
 
 PREVIEW_ROW_LIMIT = 100_000
 MAX_TABLE_ROWS = 14
 BAR_WIDTH = 12
 
 
-def summarize_jtl(path, limit=PREVIEW_ROW_LIMIT, step_pattern=convert.DEFAULT_STEP_PATTERN):
-    """Короткая сводка по JTL. Бросает convert.ReportError, если файл не годится."""
-    rows = convert.parse_jtl_file(str(path), limit=limit + 1)
+def summarize_jtl(path, limit=PREVIEW_ROW_LIMIT, step_pattern=DEFAULT_STEP_PATTERN):
+    """Короткая сводка по JTL. Бросает ReportError, если файл не годится."""
+    rows = parse_jtl_file(str(path), limit=limit + 1)
     truncated = len(rows) > limit
     rows = rows[:limit]
     if not rows:
-        raise convert.ReportError('в файле нет строк с данными')
+        raise ReportError('в файле нет строк с данными')
     missing = {'timeStamp', 'elapsed', 'label'} - set(rows[0].keys())
     if missing:
-        raise convert.ReportError(
+        raise ReportError(
             f"нет колонок: {', '.join(sorted(missing))} (это точно JTL в формате CSV?)")
 
     grouped = defaultdict(list)
     for row in rows:
         grouped[row['label']].append(row)
-    stats = [dict(convert.collect_stats(r), label=label) for label, r in grouped.items()]
-    total = convert.collect_stats(rows)
+    stats = [dict(stats_of_rows(r), label=label) for label, r in grouped.items()]
+    total = stats_of_rows(rows)
 
     try:
         step_re = re.compile(step_pattern)
     except re.error:
-        step_re = re.compile(convert.DEFAULT_STEP_PATTERN)
+        step_re = re.compile(DEFAULT_STEP_PATTERN)
     steps = [s for s in stats if step_re.match(s['label'])]
     shown = steps or stats  # без нумерованных шагов показываем метки как есть
 
-    starts = [convert.to_int(r.get('timeStamp')) for r in rows]
-    ends = [convert.to_int(r.get('timeStamp')) + convert.to_int(r.get('elapsed')) for r in rows]
+    starts = [to_int(r.get('timeStamp')) for r in rows]
+    ends = [to_int(r.get('timeStamp')) + to_int(r.get('elapsed')) for r in rows]
     return {
         'name': os.path.basename(str(path)),
         'size': os.path.getsize(path),
@@ -48,7 +51,7 @@ def summarize_jtl(path, limit=PREVIEW_ROW_LIMIT, step_pattern=convert.DEFAULT_ST
         'truncated': truncated,
         'labels': len(stats),
         'errors': sum(1 for r in rows if str(r.get('success', '')).strip().upper() != 'TRUE'),
-        'duration': convert.format_duration(max(ends) - min(starts)),
+        'duration': format_duration(max(ends) - min(starts)),
         'avg': total['avg'],
         'p90': total['p90'],
         'throughput': total['throughput'],
@@ -107,7 +110,7 @@ def render_summary(info, accent='#d97757', dim='#8b8b8b', ok='#6fbf73', err='#e0
     return Group(*parts)
 
 
-def summarize_xml(path, error_cls=convert.ReportError):
+def summarize_xml(path, error_cls=ReportError):
     """Сколько меток внутри standardResults.xml / dashBoard_jmeter.xml."""
     from . import verify
     name = os.path.basename(str(path))

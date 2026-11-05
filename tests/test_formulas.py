@@ -4,7 +4,8 @@ import math
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from jmeter_reporter import convert, stats
+from jmeter_reporter import stats
+from jmeter_reporter.stats import percentile
 
 
 def jmeter_percent_point(values, p):
@@ -24,7 +25,7 @@ elapsed_lists = st.lists(st.integers(min_value=0, max_value=60_000), min_size=1,
 @given(elapsed_lists, st.sampled_from([0.5, 0.9, 0.95, 0.99]))
 @settings(max_examples=300, deadline=None)
 def test_percentile_equals_jmeter_algorithm(values, p):
-    assert convert.percentile(sorted(values), p) == jmeter_percent_point(values, p)
+    assert percentile(sorted(values), p) == jmeter_percent_point(values, p)
 
 
 @given(elapsed_lists)
@@ -37,10 +38,10 @@ def test_histogram_engine_equals_sorted_list_formulas(values):
     got = stats._finalize(acc)
     ordered = sorted(values)
     assert got['avg'] == sum(values) // len(values)
-    assert got['median'] == convert.percentile(ordered, 0.5)
-    assert got['p90'] == convert.percentile(ordered, 0.9)
-    assert got['p95'] == convert.percentile(ordered, 0.95)
-    assert got['p99'] == convert.percentile(ordered, 0.99)
+    assert got['median'] == percentile(ordered, 0.5)
+    assert got['p90'] == percentile(ordered, 0.9)
+    assert got['p95'] == percentile(ordered, 0.95)
+    assert got['p99'] == percentile(ordered, 0.99)
     assert (got['min'], got['max']) == (ordered[0], ordered[-1])
 
 

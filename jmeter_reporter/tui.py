@@ -31,6 +31,9 @@ from . import convert
 from . import history
 from . import preview
 from . import workflow
+from .errors import ReportError
+from .stats import DEFAULT_STEP_PATTERN
+from .timeutil import resolve_timezone
 
 ACCENT = '#d97757'   # the orange of Claude Code
 DIM = '#8b8b8b'
@@ -264,7 +267,7 @@ class ReportApp(App):
                         yield Input(placeholder='свой: Europe/Samara, +05:00', id='tz-custom')
                     with Horizontal(classes='row'):
                         yield Static('шаги', classes='key')
-                        yield Input(value=convert.DEFAULT_STEP_PATTERN, id='steps')
+                        yield Input(value=DEFAULT_STEP_PATTERN, id='steps')
                     with Horizontal(classes='row'):
                         yield Static('эталон', classes='key')
                         yield Input(placeholder='JTL до изменений для сравнения (Ctrl+E)',
@@ -309,7 +312,7 @@ class ReportApp(App):
         """report.toml from the start folder or the current one: defaults and SLA."""
         try:
             self.cfg = config.load_for(None, self.start_dir, Path.cwd())
-        except convert.ReportError as exc:
+        except ReportError as exc:
             self.cfg = None
             self.headline('Ошибка в report.toml', ERR)
             for line in str(exc).splitlines():
@@ -421,7 +424,7 @@ class ReportApp(App):
     def _show_preview(self, path):
         if path.suffix.lower() not in PREVIEWABLE:
             return
-        steps = self.query_one('#steps', Input).value.strip() or convert.DEFAULT_STEP_PATTERN
+        steps = self.query_one('#steps', Input).value.strip() or DEFAULT_STEP_PATTERN
         self._preview_worker(str(path), steps)
 
     @work(thread=True, exclusive=True, group='preview')
@@ -433,7 +436,7 @@ class ReportApp(App):
             else:
                 info = preview.summarize_jtl(path, step_pattern=steps)
                 renderable = preview.render_summary(info, ACCENT, DIM, OK, ERR)
-        except convert.ReportError as exc:
+        except ReportError as exc:
             renderable = Text(f'Не удается показать файл: {exc}', style=WARN)
         except Exception as exc:  # a broken file must not kill the UI
             renderable = Text(f'Не удается показать файл: {type(exc).__name__}: {exc}',
@@ -506,7 +509,7 @@ class ReportApp(App):
         dashboard = self.query_one('#dashboard', Input).value.strip()
         custom_tz = self.query_one('#tz-custom', Input).value.strip()
         tz_value = custom_tz or self.query_one('#tz', Select).value
-        steps = self.query_one('#steps', Input).value.strip() or convert.DEFAULT_STEP_PATTERN
+        steps = self.query_one('#steps', Input).value.strip() or DEFAULT_STEP_PATTERN
         baseline = self.query_one('#baseline', Input).value.strip()
         export_choice = self.query_one('#export', Select).value
 
@@ -530,8 +533,8 @@ class ReportApp(App):
             self.headline('Выходной файл должен иметь расширение .xlsx', ERR)
             return
         try:
-            tz = convert.resolve_timezone(str(tz_value))
-        except convert.ReportError as exc:
+            tz = resolve_timezone(str(tz_value))
+        except ReportError as exc:
             self.headline(str(exc).splitlines()[0], ERR)
             return
 
@@ -553,23 +556,23 @@ class ReportApp(App):
     def _build_worker(self, jtl, output, tz, steps, standard, dashboard, baseline, exports):
         try:
             keep = self.cfg.keep_history if self.cfg else True
-            side = workflow.extra_paths(output).values() if keep else ()
-            archived = history.archive_existing(output, side) if keep else []
+            side = list(workflow.extra_paths(output).values())
             info = convert.create_excel_report(
                 jtl, output, tz=tz, step_pattern=steps,
-                standard_xml=standard, dashboard_xml=dashboard)
+                standard_xml=standard, dashboard_xml=dashboard,
+                include_raw_data=self.cfg.include_raw_data if self.cfg else True,
+                archive=(lambda: history.archive_existing(output, side)) if keep else None)
             # The Excel report is done; extras must not hide that if they fail.
             info['extras'], info['extras_error'] = None, None
             try:
                 info['extras'] = workflow.run_extras(
                     jtl, output, self.cfg, tz, steps, baseline=baseline, exports=exports,
                     run=info.get('run'))
-            except convert.ReportError as exc:
+            except ReportError as exc:
                 info['extras_error'] = str(exc)
-            info['archived'] = archived
             if keep:
-                history.record(output, jtl, info, info['extras'], archived)
-        except convert.ReportError as exc:
+                history.record(output, jtl, info, info['extras'], info['archived'])
+        except ReportError as exc:
             self.call_from_thread(self._build_failed, str(exc))
         except Exception as exc:  # an unexpected error must not kill the UI
             self.call_from_thread(self._build_failed, f'{type(exc).__name__}: {exc}')

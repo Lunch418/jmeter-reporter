@@ -3,7 +3,9 @@ import csv
 import html
 import os
 
-from . import convert
+from .errors import ReportError
+from .safety import csv_safe
+from .timeutil import format_duration, format_timestamp, timezone_label
 
 CSV_HEADERS = ['label', 'samples', 'avg', 'median', 'p90', 'p95', 'p99', 'min', 'max',
                'error_pct', 'throughput', 'received_kb_s', 'sent_kb_s']
@@ -23,11 +25,11 @@ def write_csv(run, path, step_pattern=None):
             writer = csv.writer(f)
             writer.writerow(CSV_HEADERS)
             for stats in _rows(run, step_pattern):
-                writer.writerow([convert.csv_safe(stats['label'])] + [
+                writer.writerow([csv_safe(stats['label'])] + [
                     round(stats[k], 3) if isinstance(stats[k], float) else stats[k]
                     for k in STAT_KEYS])
     except OSError as exc:
-        raise convert.ReportError(f"Не удалось сохранить '{path}': {exc}")
+        raise ReportError(f"Не удалось сохранить '{path}': {exc}")
 
 
 CSS = """
@@ -54,9 +56,9 @@ def _fmt(value):
 def render_html(run, tz=None, step_pattern=None, verdict=None, title='Отчет по нагрузочному тестированию'):
     """Self-contained HTML page (open in a browser, print to PDF if you need one)."""
     e = html.escape
-    start = convert.format_timestamp(run.first_ts, tz)
-    end = convert.format_timestamp(run.last_ts, tz)
-    tz_label = convert.timezone_label(run.first_ts, tz)
+    start = format_timestamp(run.first_ts, tz)
+    end = format_timestamp(run.last_ts, tz)
+    tz_label = timezone_label(run.first_ts, tz)
     errors = run.errors
 
     rows = _rows(run, step_pattern)
@@ -77,7 +79,7 @@ def render_html(run, tz=None, step_pattern=None, verdict=None, title='Отчет
                 f'<div><span class="dim">ошибок</span><b class="{"bad" if errors else "ok"}">'
                 f'{errors}</b></div>'
                 f'<div><span class="dim">длительность</span>'
-                f'<b>{e(convert.format_duration(run.duration_ms))}</b></div></div>')
+                f'<b>{e(format_duration(run.duration_ms))}</b></div></div>')
 
     body.append('<table><thead><tr><th>Label</th><th>n</th><th>avg</th><th>median</th>'
                 '<th>p90</th><th>p95</th><th>max</th><th>err %</th><th></th>'
@@ -121,5 +123,5 @@ def write_html(run, path, tz=None, step_pattern=None, verdict=None):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(page)
     except OSError as exc:
-        raise convert.ReportError(f"Не удалось сохранить '{path}': {exc}")
+        raise ReportError(f"Не удалось сохранить '{path}': {exc}")
 

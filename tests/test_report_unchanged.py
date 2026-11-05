@@ -5,6 +5,7 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 from jmeter_reporter import convert
+from jmeter_reporter.timeutil import resolve_timezone
 
 SAMPLES = Path(__file__).resolve().parent.parent / 'samples'
 # sha256 over sheet names, chart counts, every cell value and number format of the report
@@ -27,7 +28,7 @@ def fingerprint(path):
 def test_excel_report_is_unchanged(tmp_path):
     out = tmp_path / 'r.xlsx'
     convert.create_excel_report(
-        str(SAMPLES / 'jmeter.jtl'), str(out), tz=convert.resolve_timezone('UTC'),
+        str(SAMPLES / 'jmeter.jtl'), str(out), tz=resolve_timezone('UTC'),
         standard_xml=str(SAMPLES / 'standardResults.xml'),
         dashboard_xml=str(SAMPLES / 'dashBoard_jmeter.xml'))
     assert fingerprint(out) == GOLDEN

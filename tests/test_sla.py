@@ -1,8 +1,8 @@
 import pytest
 
 from jmeter_reporter import config
-from jmeter_reporter import convert
 from jmeter_reporter import sla
+from jmeter_reporter.errors import ReportError
 
 
 def norm(**kw):
@@ -66,7 +66,7 @@ def test_min_throughput_is_a_lower_bound(make_run):
 
 def test_nothing_checked_is_an_error(make_run):
     run = make_run([('sub', 10, True)])
-    with pytest.raises(convert.ReportError, match='Ни одно'):
+    with pytest.raises(ReportError, match='Ни одно'):
         sla.evaluate(run, norm(p90_ms=100))
 
 
@@ -84,14 +84,14 @@ def test_nothing_checked_is_an_error(make_run):
     ({'p90_ms': 1, 'step': [{'match': 'x'}]}, 'нет ограничений'),
 ])
 def test_normalize_rejects_mistakes(raw, match):
-    with pytest.raises(convert.ReportError, match=match):
+    with pytest.raises(ReportError, match=match):
         sla.normalize(raw)
 
 
 def test_typo_in_config_fails_loudly(tmp_path):
     path = tmp_path / 'report.toml'
     path.write_text('[sla]\np90ms = 100\n', encoding='utf-8')
-    with pytest.raises(convert.ReportError, match='p90ms'):
+    with pytest.raises(ReportError, match='p90ms'):
         config.load_config(str(path))
 
 

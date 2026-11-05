@@ -1,7 +1,8 @@
 """SLA limits and the PASS / FAIL verdict for a run."""
 import re
 
-from . import convert
+from .errors import ReportError
+from .stats import DEFAULT_STEP_PATTERN
 
 # limit name -> (key in stats, kind). 'max' = the value must not exceed the limit,
 # 'min' = the value must not be below it.
@@ -22,11 +23,11 @@ def _limits(table, where, path):
     result = {}
     for key, value in table.items():
         if key not in LIMITS:
-            raise convert.ReportError(
+            raise ReportError(
                 f"{where} в '{path}': неизвестное ограничение '{key}'. "
                 f"Допустимы: {', '.join(LIMITS)}.")
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
-            raise convert.ReportError(
+            raise ReportError(
                 f"{where}.{key} в '{path}' должно быть неотрицательным числом.")
         result[key] = float(value)
     return result
@@ -37,28 +38,28 @@ def normalize(raw, path='report.toml'):
     raw = dict(raw)
     scope = raw.pop('scope', 'steps')
     if scope not in SCOPES:
-        raise convert.ReportError(f"sla.scope в '{path}': допустимо {', '.join(SCOPES)}.")
+        raise ReportError(f"sla.scope в '{path}': допустимо {', '.join(SCOPES)}.")
     total_raw = raw.pop('total', {})
     steps_raw = raw.pop('step', [])
     if not isinstance(total_raw, dict):
-        raise convert.ReportError(f"[sla.total] в '{path}' должен быть таблицей.")
+        raise ReportError(f"[sla.total] в '{path}' должен быть таблицей.")
     if not isinstance(steps_raw, list) or any(not isinstance(x, dict) for x in steps_raw):
-        raise convert.ReportError(f"[[sla.step]] в '{path}' должен быть массивом таблиц.")
+        raise ReportError(f"[[sla.step]] в '{path}' должен быть массивом таблиц.")
 
     overrides = []
     for index, item in enumerate(steps_raw, 1):
         item = dict(item)
         pattern = item.pop('match', None)
         if not isinstance(pattern, str) or not pattern:
-            raise convert.ReportError(f"[[sla.step]] #{index} в '{path}': нужно поле match.")
+            raise ReportError(f"[[sla.step]] #{index} в '{path}': нужно поле match.")
         try:
             regex = re.compile(pattern)
         except re.error as exc:
-            raise convert.ReportError(
+            raise ReportError(
                 f"[[sla.step]] #{index} в '{path}': некорректное выражение '{pattern}': {exc}")
         limits = _limits(item, f'sla.step #{index}', path)
         if not limits:
-            raise convert.ReportError(f"[[sla.step]] #{index} в '{path}': нет ограничений.")
+            raise ReportError(f"[[sla.step]] #{index} в '{path}': нет ограничений.")
         overrides.append({'match': pattern, 'regex': regex, 'limits': limits})
 
     sla = {'scope': scope,
@@ -66,7 +67,7 @@ def normalize(raw, path='report.toml'):
            'total': _limits(total_raw, 'sla.total', path),
            'overrides': overrides}
     if not sla['defaults'] and not sla['total'] and not overrides:
-        raise convert.ReportError(f"[sla] в '{path}': не задано ни одного ограничения.")
+        raise ReportError(f"[sla] в '{path}': не задано ни одного ограничения.")
     return sla
 
 
@@ -94,17 +95,17 @@ def _check(label, stats, limits, rows):
                      'actual': actual, 'ok': ok})
 
 
-def evaluate(run, sla, step_pattern=convert.DEFAULT_STEP_PATTERN):
+def evaluate(run, sla, step_pattern=DEFAULT_STEP_PATTERN):
     """Check a stats.Run against normalized SLA. Raises ReportError if nothing was checked."""
     try:
         step_re = re.compile(step_pattern)
     except re.error as exc:
-        raise convert.ReportError(f"Некорректное регулярное выражение шагов: {exc}")
+        raise ReportError(f"Некорректное регулярное выражение шагов: {exc}")
 
     uses_errors = any('error_pct' in lim for lim in
                       [sla['defaults'], sla['total'], *[o['limits'] for o in sla['overrides']]])
     if uses_errors and not run.has_success:
-        raise convert.ReportError(
+        raise ReportError(
             "В JTL нет колонки 'success': процент ошибок посчитать нельзя, а в SLA есть "
             "error_pct. Включите jmeter.save.saveservice.successful=true или уберите error_pct.")
 
@@ -120,7 +121,7 @@ def evaluate(run, sla, step_pattern=convert.DEFAULT_STEP_PATTERN):
     if sla['total']:
         _check('TOTAL', run.total, sla['total'], rows)
     if not rows:
-        raise convert.ReportError(
+        raise ReportError(
             'Ни одно ограничение SLA не применилось: ни один шаг не подошел под правила. '
             'Проверьте steps и match.')
     return Verdict(rows)

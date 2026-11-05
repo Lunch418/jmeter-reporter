@@ -13,32 +13,53 @@ import os
 import re
 import sys
 
+from . import errors as _errors
+from . import jtl as _jtl
+from . import safety as _safety
 from . import stats as stats_module
+from . import timeutil as _timeutil
 from . import verify
-from .errors import ReportError, UsageError
-from .jtl import JTL_ENCODING, iter_jtl_rows, parse_jtl_file, to_int  # noqa: F401
-from .safety import FORMULA_TRIGGERS, csv_safe, neutralize_formulas  # noqa: F401
-from .stats import average, percentile  # noqa: F401
-from .timeutil import (FIXED_ZONES, format_duration, format_timestamp,  # noqa: F401
-                       resolve_timezone, timezone_label, to_datetime)
-
-# Выше этого числа строк отчет строится долго и держит весь JTL в памяти.
-LARGE_FILE_ROWS = 200_000
 
 # Лимит строк листа Excel (xlsx). Лист 'Исходные данные' обрезается по нему,
 # иначе openpyxl падает на большом JTL уже в момент сохранения.
 EXCEL_MAX_ROWS = 1_048_576
 
-# Оценка памяти листа 'Исходные данные' (измерено на 40 тысячах строк, 17 колонок).
-BYTES_PER_RAW_ROW = 8500
-
-# Шаги сценария по умолчанию: 'NN. Название'.
-DEFAULT_STEP_PATTERN = r'^\d{2}\.'
+DEFAULT_STEP_PATTERN = stats_module.DEFAULT_STEP_PATTERN
 
 
-def collect_stats(rows):
-    """Агрегаты по списку замеров (словари строк JTL). Формулы - в stats.py."""
-    return stats_module.stats_of_rows(rows)
+# --- Устаревшие имена (до 2.0) -------------------------------------------------------------
+# Раньше convert.py был «всем сразу» и реэкспортировал функции из других модулей. Теперь
+# импортируйте их напрямую (from jmeter_reporter.jtl import to_int и т.д.). Старые имена
+# работают, но выдают DeprecationWarning, и будут удалены в 2.0.
+_DEPRECATED = {
+    'ReportError': ('errors', 'ReportError'),
+    'to_int': ('jtl', 'to_int'),
+    'iter_jtl_rows': ('jtl', 'iter_jtl_rows'),
+    'parse_jtl_file': ('jtl', 'parse_jtl_file'),
+    'JTL_ENCODING': ('jtl', 'JTL_ENCODING'),
+    'csv_safe': ('safety', 'csv_safe'),
+    'neutralize_formulas': ('safety', 'neutralize_formulas'),
+    'FORMULA_TRIGGERS': ('safety', 'FORMULA_TRIGGERS'),
+    'percentile': ('stats', 'percentile'),
+    'average': ('stats', 'average'),
+    'collect_stats': ('stats', 'stats_of_rows'),
+    'resolve_timezone': ('timeutil', 'resolve_timezone'),
+    'format_timestamp': ('timeutil', 'format_timestamp'),
+    'format_duration': ('timeutil', 'format_duration'),
+    'timezone_label': ('timeutil', 'timezone_label'),
+    'to_datetime': ('timeutil', 'to_datetime'),
+}
+
+
+def __getattr__(name):
+    if name in _DEPRECATED:
+        import importlib
+        import warnings
+        module, real = _DEPRECATED[name]
+        warnings.warn(f"convert.{name} is deprecated and will be removed in 2.0; "
+                      f"use jmeter_reporter.{module}.{real}", DeprecationWarning, stacklevel=2)
+        return getattr(importlib.import_module(f'.{module}', __package__), real)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # ---------------------------------------------------------------- отчёт ----
@@ -51,7 +72,7 @@ def _import_openpyxl():
         from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
         from openpyxl.utils import get_column_letter
     except ImportError:
-        raise ReportError(
+        raise _errors.ReportError(
             "Для построения Excel-отчета нужен пакет openpyxl (pip install openpyxl).\n"
             "Без него работают проверка SLA, сравнение и экспорт: python3 cli.py --help")
     return (Workbook, BarChart, Reference, Alignment, Border, Font, PatternFill, Side,
@@ -59,15 +80,20 @@ def _import_openpyxl():
 
 
 def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN,
-                        standard_xml=None, dashboard_xml=None, include_raw_data=True):
+                        standard_xml=None, dashboard_xml=None, include_raw_data=True,
+                        archive=None):
     """Строит xlsx-отчёт. Возвращает словарь со сводкой (для CLI и UI).
 
-    include_raw_data=False пропускает лист 'Исходные данные': файл читается потоком
-    (память не растет с размером JTL), а лимит строк Excel перестает быть проблемой.
-    Остальные листы при этом получаются теми же самыми.
+    include_raw_data=False пропускает лист 'Исходные данные' (он нужен не всем и делает файл
+    в разы больше). Остальные листы при этом получаются теми же самыми. Лист пишется потоком,
+    память от числа строк не зависит.
+
+    archive - функция без аргументов; вызывается, когда новый отчет готов и вот-вот
+    заменит старый (чтобы перенести старый в историю). Ее результат попадает в info['archived'].
     """
     (Workbook, BarChart, Reference, Alignment, Border, Font, PatternFill, Side,
      get_column_letter) = _import_openpyxl()
+    from . import rawsheet  # нужен openpyxl, поэтому не на верхнем уровне
 
     # Единственный расчет: stats.load_run читает файл потоком. Порядок меток - как в JTL
     # (он совпадает с порядком шагов сценария). Начало и конец теста - min/max, а не первая
@@ -79,13 +105,6 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     total_stats = {k: v for k, v in run.total.items() if k != 'label'}
     first_ts, last_ts = run.first_ts, run.last_ts
 
-    if n_rows > LARGE_FILE_ROWS and include_raw_data:
-        # Измерено: лист 'Исходные данные' стоит около 8 КБ памяти на строку (ячейки openpyxl).
-        gb = n_rows * BYTES_PER_RAW_ROW / 1024 ** 3
-        warnings.append(f"большой файл ({n_rows} строк): лист 'Исходные данные' займет "
-                        f"около {gb:.1f} ГБ памяти и будет строиться долго. Отключите его: "
-                        f"--no-raw-data (остальные листы те же, памяти нужно в десятки раз "
-                        f"меньше). Проверка SLA, сравнение и экспорт (cli.py) читают файл потоком")
     if not has_success:
         warnings.append("в JTL нет колонки 'success' - все замеры будут учтены как ошибочные")
 
@@ -93,11 +112,11 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     check_rows = []
     if standard_xml:
         check_rows += verify.compare(
-            stats, verify.parse_standard_results(standard_xml, ReportError),
+            stats, verify.parse_standard_results(standard_xml, _errors.ReportError),
             'standardResults.xml')
     if dashboard_xml:
         check_rows += verify.compare(
-            stats, verify.parse_dashboard(dashboard_xml, ReportError),
+            stats, verify.parse_dashboard(dashboard_xml, _errors.ReportError),
             'dashBoard_jmeter.xml')
     check = verify.summarize(check_rows) if (standard_xml or dashboard_xml) else None
     if check and not check['ok']:
@@ -106,10 +125,10 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     else:
         warnings_after = None
 
-    tz_label = timezone_label(first_ts, tz)
-    start_time = format_timestamp(first_ts, tz)
-    end_time = format_timestamp(last_ts, tz)
-    duration_str = format_duration(last_ts - first_ts)
+    tz_label = _timeutil.timezone_label(first_ts, tz)
+    start_time = _timeutil.format_timestamp(first_ts, tz)
+    end_time = _timeutil.format_timestamp(last_ts, tz)
+    duration_str = _timeutil.format_duration(last_ts - first_ts)
 
     wb = Workbook()
 
@@ -205,7 +224,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     try:
         step_re = re.compile(step_pattern)
     except re.error as exc:
-        raise ReportError(f"Некорректное регулярное выражение шагов '{step_pattern}': {exc}")
+        raise _errors.ReportError(f"Некорректное регулярное выражение шагов '{step_pattern}': {exc}")
     main_steps = [s for s in stats if step_re.match(s['label'])]
 
     r_idx = FIRST_DATA_ROW
@@ -284,6 +303,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
             ws_check.column_dimensions[get_column_letter(col)].width = width
 
     # ================= ЛИСТ 3: ИСХОДНЫЕ ДАННЫЕ =================
+    raw_stream = None
     if include_raw_data:
         ws3 = wb.create_sheet('Исходные данные')
         numeric_columns = {'timeStamp', 'elapsed', 'bytes', 'sentBytes', 'grpThreads',
@@ -291,30 +311,21 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
         raw_limit = EXCEL_MAX_ROWS - 1
         truncated = n_rows - raw_limit
 
-        # Второй потоковый проход по файлу: список строк JTL в памяти не держим
-        # (остаются только ячейки openpyxl).
-        raw_headers = None
-        for r_idx, row in enumerate(iter_jtl_rows(jtl_file), start=2):
-            if r_idx - 1 > raw_limit:
-                break
-            if raw_headers is None:
-                raw_headers = list(row.keys())
-                for col, header in enumerate(raw_headers, 1):
-                    cell = ws3.cell(row=1, column=col, value=header)
-                    cell.font = header_font_white
-                    cell.fill = header_fill_blue
-                    cell.border = thin_border
-                    cell.alignment = Alignment(horizontal='center')
-            for col, header in enumerate(raw_headers, 1):
-                value = row.get(header, '')
-                # Числа записываются числами, иначе Excel показывает их как текст
-                # и по ним нельзя ни отсортировать, ни построить формулу.
-                if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
-                    value = int(value)
-                cell = ws3.cell(row=r_idx, column=col, value=value)
-                if type(value) is str and value.startswith(FORMULA_TRIGGERS):
-                    cell.data_type = 's'
-                cell.border = thin_border
+        # Заголовок строит openpyxl, строки данных пишутся потоком прямо в архив xlsx
+        # (rawsheet.py): память не зависит от числа строк.
+        rows_iter = _jtl.iter_jtl_rows(jtl_file)
+        raw_headers = list(next(rows_iter).keys())
+        rows_iter = _jtl.iter_jtl_rows(jtl_file)
+        for col, header in enumerate(raw_headers, 1):
+            cell = ws3.cell(row=1, column=col, value=header)
+            cell.font = header_font_white
+            cell.fill = header_fill_blue
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal='center')
+        sample = ws3.cell(row=2, column=1, value=0)  # образец стиля ячейки данных
+        sample.border = thin_border
+        raw_stream = (rows_iter, wb._cell_styles.add(sample._style), numeric_columns,
+                      raw_headers, min(n_rows, raw_limit))
 
         if truncated > 0:
             warnings.append(f"лист 'Исходные данные' обрезан: {truncated} строк "
@@ -325,12 +336,34 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
 
     for sheet in wb.worksheets:
         if sheet.title != 'Исходные данные':
-            neutralize_formulas(sheet)
+            _safety.neutralize_formulas(sheet)
 
+    # Сначала во временный файл, потом одним переименованием: если сборка упала,
+    # прежний отчет остается на месте. Старая версия уходит в историю только при успехе.
+    tmp = f'{output_file}.tmp'
+    archived = []
     try:
-        wb.save(output_file)
+        try:
+            wb.save(tmp)
+            if raw_stream:
+                rows_iter, style, numeric_columns, raw_headers, total_rows = raw_stream
+                tmp_full = f'{output_file}.full.tmp'
+                try:
+                    rawsheet.fill_sheet(tmp, tmp_full, wb.sheetnames.index('Исходные данные') + 1,
+                                        rows_iter, style, numeric_columns, raw_headers,
+                                        total_rows)
+                    os.replace(tmp_full, tmp)
+                finally:
+                    if os.path.exists(tmp_full):
+                        os.remove(tmp_full)
+            if archive is not None:
+                archived = archive()
+            rawsheet.atomic_replace(tmp, output_file)
+        finally:
+            if os.path.exists(tmp):
+                os.remove(tmp)
     except OSError as exc:
-        raise ReportError(f"Не удалось сохранить '{output_file}': {exc}")
+        raise _errors.ReportError(f"Не удалось сохранить '{output_file}': {exc}")
 
     return {
         'output': output_file,
@@ -347,6 +380,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
         'verification': check,
         'warnings': warnings,
         'run': run,
+        'archived': archived,
     }
 
 
@@ -379,7 +413,7 @@ VALUE_OPTIONS = ('--tz', '--steps', '--standard', '--dashboard', '--config')
 
 
 def parse_args(argv):
-    """Разбор командной строки. Возвращает словарь параметров; ошибки - UsageError/ReportError."""
+    """Разбор командной строки. Возвращает словарь параметров; ошибки - _errors.UsageError/_errors.ReportError."""
     options = {'--tz': None, '--steps': None, '--standard': None, '--dashboard': None,
                '--config': None, '--raw-data': None}
     positional = []
@@ -399,7 +433,7 @@ def parse_args(argv):
                 options[name] = argv[i + 1]
                 i += 2
             else:
-                raise UsageError(f"Ошибка: у {name} не указано значение.\n\n" + USAGE)
+                raise _errors.UsageError(f"Ошибка: у {name} не указано значение.\n\n" + USAGE)
         else:
             positional.append(arg)
             i += 1
@@ -414,7 +448,7 @@ def parse_args(argv):
         options['--dashboard'] = options['--dashboard'] or dashboard
         options['--standard'] = options['--standard'] or standard
     else:
-        raise UsageError(USAGE)
+        raise _errors.UsageError(USAGE)
 
     # report.toml (рядом с запуском или из --config) задает значения по умолчанию.
     from . import config
@@ -429,9 +463,9 @@ def parse_args(argv):
 
     for path in (jtl_file, options['--standard'], options['--dashboard']):
         if path and not os.path.isfile(path):
-            raise ReportError(f"Файл не найден: '{path}'")
+            raise _errors.ReportError(f"Файл не найден: '{path}'")
 
-    tz = resolve_timezone(options['--tz'])
+    tz = _timeutil.resolve_timezone(options['--tz'])
     return {'jtl': jtl_file, 'output': output_file, 'tz': tz,
             'steps': options['--steps'], 'standard': options['--standard'],
             'dashboard': options['--dashboard'],
@@ -451,22 +485,22 @@ def main(argv=None):
         return 0
     try:
         args = parse_args(argv)
-        archived = []
+        archive = None
         if args['keep_history']:
             from . import history
-            archived = history.archive_existing(args['output'])
+            archive = lambda: history.archive_existing(args['output'])  # noqa: E731
         info = create_excel_report(
             args['jtl'], args['output'], tz=args['tz'], step_pattern=args['steps'],
             standard_xml=args['standard'], dashboard_xml=args['dashboard'],
-            include_raw_data=args['raw_data'])
-    except ReportError as exc:
+            include_raw_data=args['raw_data'], archive=archive)
+    except _errors.ReportError as exc:
         print(exc, file=sys.stderr)
         return 2
     for warning in info['warnings']:
         print(f"Внимание: {warning}", file=sys.stderr)
     if args['keep_history']:
-        history.record(args['output'], args['jtl'], info, None, archived)
-        for path in archived:
+        history.record(args['output'], args['jtl'], info, None, info['archived'])
+        for path in info['archived']:
             print(f"Прошлая версия сохранена: {path}")
     print(f"Файл '{info['output']}' успешно создан!")
     print(f"   Листы: {', '.join(info['sheets'])}")

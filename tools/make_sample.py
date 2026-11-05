@@ -17,7 +17,8 @@ from collections import defaultdict
 from xml.sax.saxutils import escape
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from jmeter_reporter import convert  # noqa: E402
+from jmeter_reporter.jtl import parse_jtl_file
+from jmeter_reporter.stats import stats_of_rows
 
 HEADER = ['timeStamp', 'elapsed', 'label', 'responseCode', 'responseMessage',
           'threadName', 'dataType', 'success', 'failureMessage', 'bytes',
@@ -90,9 +91,9 @@ def write_xml(jtl_path, standard_path, dashboard_path):
     Numbers are computed from the JTL, so the pair is consistent (verification passes).
     """
     grouped = defaultdict(list)
-    for row in convert.parse_jtl_file(str(jtl_path)):
+    for row in parse_jtl_file(str(jtl_path)):
         grouped[row['label']].append(row)
-    stats = {label: convert.collect_stats(rows) for label, rows in grouped.items()}
+    stats = {label: stats_of_rows(rows) for label, rows in grouped.items()}
 
     std = ['<?xml version="1.0"?>', '<results>']
     for label, st in stats.items():

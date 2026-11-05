@@ -1,5 +1,7 @@
 """Comparison of two runs: what got better or worse between a baseline and a new run."""
-from . import convert
+from .errors import ReportError
+from .safety import csv_safe, neutralize_formulas
+from .stats import DEFAULT_STEP_PATTERN
 
 DEFAULT_TOLERANCE_PCT = 10.0
 ERROR_TOLERANCE_PP = 0.01  # error rate may rise by this many percentage points at most
@@ -54,7 +56,7 @@ class Comparison:
         return bool(self.regressions)
 
 
-def compare_runs(base, new, step_pattern=convert.DEFAULT_STEP_PATTERN,
+def compare_runs(base, new, step_pattern=DEFAULT_STEP_PATTERN,
                  tolerance=DEFAULT_TOLERANCE_PCT, steps_only=True,
                  min_abs_ms=DEFAULT_MIN_ABS_MS, min_samples=DEFAULT_MIN_SAMPLES):
     """Compare two stats.Run objects label by label (steps only by default) plus TOTAL.
@@ -65,7 +67,7 @@ def compare_runs(base, new, step_pattern=convert.DEFAULT_STEP_PATTERN,
     with fewer than `min_samples` samples on either side, are never flagged (noise).
     """
     if tolerance < 0 or min_abs_ms < 0 or min_samples < 1:
-        raise convert.ReportError('Допуск сравнения не может быть отрицательным, '
+        raise ReportError('Допуск сравнения не может быть отрицательным, '
                                   'а min_samples должен быть не меньше 1.')
     wanted = new.steps(step_pattern) if steps_only else list(new.labels)
     # Labels are matched without spaces at the edges, like in the XML cross-check.
@@ -150,12 +152,12 @@ def write_comparison_csv(cmp, path):
             for r in cmp.rows:
                 def pct(v):
                     return '' if v is None else round(v, 2)
-                writer.writerow([convert.csv_safe(r['label']), r['status'], r['avg_base'], r['avg_new'],
+                writer.writerow([csv_safe(r['label']), r['status'], r['avg_base'], r['avg_new'],
                                  pct(r['avg_delta']), r['p90_base'], r['p90_new'],
                                  pct(r['p90_delta']), round(r['err_base'], 3),
                                  round(r['err_new'], 3)])
     except OSError as exc:
-        raise convert.ReportError(f"Не удалось сохранить '{path}': {exc}")
+        raise ReportError(f"Не удалось сохранить '{path}': {exc}")
 
 
 def write_comparison(cmp, path):
@@ -247,8 +249,8 @@ def write_comparison_xlsx(cmp, path):
     for col, width in enumerate([44, 14, 14, 12, 12, 12, 10, 14, 14, 16], 1):
         ws.column_dimensions[get_column_letter(col)].width = width
     ws.freeze_panes = ws.cell(row=header_row + 1, column=2)
-    convert.neutralize_formulas(ws)
+    neutralize_formulas(ws)
     try:
         wb.save(path)
     except OSError as exc:
-        raise convert.ReportError(f"Не удалось сохранить '{path}': {exc}")
+        raise ReportError(f"Не удалось сохранить '{path}': {exc}")

@@ -65,9 +65,9 @@ def test_compare_falls_back_to_csv(work):
 
 
 def test_excel_report_explains_what_is_missing(work):
-    out = run_blocked("from jmeter_reporter import convert\n"
+    out = run_blocked("from jmeter_reporter import convert\nfrom jmeter_reporter.errors import ReportError\n"
                       "try:\n    convert.create_excel_report('a.jtl', 'o.xlsx')\n"
-                      "except convert.ReportError as e:\n    print(e)\n", work)
+                      "except ReportError as e:\n    print(e)\n", work)
     assert out.returncode == 0, out.stderr
     assert 'openpyxl' in out.stdout and 'cli.py' in out.stdout
 

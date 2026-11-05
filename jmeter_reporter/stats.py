@@ -11,6 +11,9 @@ from collections import Counter
 from . import jtl
 from .errors import ReportError
 
+# Шаги сценария по умолчанию: 'NN. Название'.
+DEFAULT_STEP_PATTERN = r'^\d{2}\.'
+
 
 class Run:
     """Aggregates of one test run: per label and total."""
@@ -21,7 +24,7 @@ class Run:
         self.has_success = has_success  # the JTL has a 'success' column
         self.notes = []  # warnings from reading (e.g. a truncated last line)
         self.rows = rows
-        self.labels = labels      # label -> stats dict (same keys as convert.collect_stats)
+        self.labels = labels      # label -> stats dict (same keys as stats_of_rows)
         self.total = total
         self.first_ts = first_ts  # epoch ms of the first request start
         self.last_ts = last_ts    # epoch ms of the last request end

@@ -4,6 +4,7 @@ import os
 from jmeter_reporter import config
 from jmeter_reporter import convert
 from jmeter_reporter import history
+from jmeter_reporter.errors import ReportError
 
 
 def _touch(path, text='x', mtime=1_700_000_000):
@@ -86,7 +87,7 @@ def test_keep_history_must_be_bool(tmp_path):
     path.write_text('[report]\nkeep_history = "yes"\n')
     try:
         config.load_config(path)
-    except convert.ReportError as exc:
+    except ReportError as exc:
         assert 'keep_history' in str(exc)
     else:
         raise AssertionError('no error')

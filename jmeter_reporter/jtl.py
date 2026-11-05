@@ -32,6 +32,12 @@ def iter_jtl_rows(jtl_file, limit=None, warnings=None):
     """
     try:
         yield from _read_rows(jtl_file, limit, warnings)
+    except FileNotFoundError:
+        raise ReportError(f"Файл не найден: '{jtl_file}'")
+    except OSError as exc:
+        raise ReportError(f"Не удалось прочитать '{jtl_file}': {exc.strerror or exc}")
+    except csv.Error as exc:
+        raise ReportError(f"Файл '{jtl_file}' не разбирается как CSV: {exc}")
     except UnicodeDecodeError as exc:
         raise ReportError(
             f"Файл '{jtl_file}' не читается как {JTL_ENCODING} (байт {exc.start}).\n"
