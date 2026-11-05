@@ -21,3 +21,6 @@ standardResults.xml
 .vscode/
 .DS_Store
 reports/
+
+# run history next to reports
+history/

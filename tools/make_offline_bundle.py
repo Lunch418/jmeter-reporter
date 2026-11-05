@@ -25,7 +25,7 @@ from version import __version__  # noqa: E402
 
 # Files the program needs at run time (everything else is development-only).
 RUNTIME_FILES = [
-    'cli.py', 'compare.py', 'config.py', 'convert.py', 'export.py', 'minitoml.py',
+    'cli.py', 'compare.py', 'config.py', 'convert.py', 'export.py', 'history.py', 'minitoml.py',
     'preview.py', 'sla.py', 'stats.py', 'tui.py', 'verify.py', 'version.py', 'workflow.py',
     'report.example.toml', 'requirements.txt', 'requirements-tui.txt', 'README.md',
     'CHANGELOG.md', 'docs/OFFLINE.md',

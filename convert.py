@@ -634,6 +634,7 @@ def parse_args(argv):
         options['--steps'] = options['--steps'] or cfg.steps
         if options['--raw-data'] is None:
             options['--raw-data'] = cfg.include_raw_data
+        options['keep_history'] = cfg.keep_history
     options['--steps'] = options['--steps'] or DEFAULT_STEP_PATTERN
 
     for path in (jtl_file, options['--standard'], options['--dashboard']):
@@ -647,11 +648,16 @@ def parse_args(argv):
     return {'jtl': jtl_file, 'output': output_file, 'tz': tz,
             'steps': options['--steps'], 'standard': options['--standard'],
             'dashboard': options['--dashboard'],
-            'raw_data': True if options['--raw-data'] is None else options['--raw-data']}
+            'raw_data': True if options['--raw-data'] is None else options['--raw-data'],
+            'keep_history': options.get('keep_history', True)}
 
 
 def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
+    archived = []
+    if args['keep_history']:
+        import history
+        archived = history.archive_existing(args['output'])
     try:
         info = create_excel_report(
             args['jtl'], args['output'], tz=args['tz'], step_pattern=args['steps'],
@@ -661,6 +667,10 @@ def main(argv=None):
         sys.exit(str(exc))
     for warning in info['warnings']:
         print(f"Внимание: {warning}", file=sys.stderr)
+    if args['keep_history']:
+        history.record(args['output'], args['jtl'], info, None, archived)
+        for path in archived:
+            print(f"Прошлая версия сохранена: {path}")
     print(f"Файл '{info['output']}' успешно создан!")
     print(f"   Листы: {', '.join(info['sheets'])}")
     print(f"   Строк данных: {info['rows']}")

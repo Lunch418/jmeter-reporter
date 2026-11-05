@@ -5,6 +5,7 @@
 timezone = "Europe/Moscow"      # local | UTC | Europe/Moscow | +05:00
 steps = '^\d{2}\.'              # labels like "01. Login" are steps
 # output_dir = "reports"        # where reports go when no path is given
+# keep_history = true           # false: overwrite the old report, no history/ folder
 
 [compare]
 tolerance_pct = 10              # avg / p90 change above this is a regression

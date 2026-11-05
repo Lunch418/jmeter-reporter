@@ -1,0 +1,101 @@
+"""Run history: old reports are archived instead of overwritten, every run is journaled.
+
+Layout next to the report:
+    report.xlsx                     - the latest report (path does not change)
+    history/report_20261105_101530.xlsx   - previous versions, stamped with their own mtime
+    history/journal.jsonl           - one JSON line per run (stdlib only)
+"""
+import json
+import os
+import shutil
+from datetime import datetime
+from pathlib import Path
+
+HISTORY_DIR = 'history'
+JOURNAL_NAME = 'journal.jsonl'
+
+
+def history_dir(output):
+    return Path(output).parent / HISTORY_DIR
+
+
+def archive_existing(output, extra_files=()):
+    """Move a report (and its side files) that is about to be overwritten into history/.
+
+    Returns the list of archived paths (empty when there was nothing to keep).
+    """
+    moved = []
+    folder = history_dir(output)
+    for path in [Path(output), *map(Path, extra_files)]:
+        if not path.is_file():
+            continue
+        stamp = datetime.fromtimestamp(path.stat().st_mtime).strftime('%Y%m%d_%H%M%S')
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / f'{path.stem}_{stamp}{path.suffix}'
+        counter = 1
+        while target.exists():
+            counter += 1
+            target = folder / f'{path.stem}_{stamp}_{counter}{path.suffix}'
+        shutil.move(str(path), str(target))
+        moved.append(target)
+    return moved
+
+
+def record(output, jtl, info, extras=None, archived=()):
+    """Append one run to the journal. Never raises: history must not break a report."""
+    verdict = (extras or {}).get('verdict')
+    comparison = (extras or {}).get('comparison')
+    check = info.get('verification')
+    entry = {
+        'time': datetime.now().isoformat(timespec='seconds'),
+        'jtl': os.path.basename(str(jtl)),
+        'report': os.path.basename(str(output)),
+        'rows': info.get('rows'),
+        'errors': info.get('errors'),
+        'duration': info.get('duration'),
+        'xml_check': None if check is None else bool(check.get('ok')),
+        'sla': None if verdict is None else ('PASS' if verdict.passed else 'FAIL'),
+        'regressions': None if comparison is None else comparison.count('regression'),
+        'archived': [p.name for p in archived],
+    }
+    try:
+        folder = history_dir(output)
+        folder.mkdir(parents=True, exist_ok=True)
+        with open(folder / JOURNAL_NAME, 'a', encoding='utf-8') as handle:
+            handle.write(json.dumps(entry, ensure_ascii=False) + '\n')
+    except OSError:
+        return None
+    return entry
+
+
+def read(output_or_folder, limit=20):
+    """Latest entries, newest last. Broken lines are skipped."""
+    path = Path(output_or_folder)
+    folder = path if path.is_dir() else path.parent
+    journal = folder / HISTORY_DIR / JOURNAL_NAME
+    if not journal.is_file():
+        return []
+    entries = []
+    with open(journal, encoding='utf-8') as handle:
+        for line in handle:
+            try:
+                entries.append(json.loads(line))
+            except ValueError:
+                continue
+    return entries[-limit:]
+
+
+def format_entry(entry):
+    """One readable line: '05.11 10:15  run.jtl  405000 выб., ошибок 3, SLA PASS'."""
+    try:
+        when = datetime.fromisoformat(entry['time']).strftime('%d.%m %H:%M')
+    except (KeyError, ValueError):
+        when = '?'
+    parts = [f"{entry.get('rows', '?')} выб.", f"ошибок {entry.get('errors', '?')}"]
+    if entry.get('sla'):
+        parts.append(f"SLA {entry['sla']}")
+    if entry.get('regressions') is not None:
+        parts.append(f"хуже {entry['regressions']}")
+    if entry.get('xml_check') is False:
+        parts.append('XML: расхождения')
+    return f"{when}  {entry.get('jtl', '?')}  " + ', '.join(parts)

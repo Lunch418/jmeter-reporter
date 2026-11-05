@@ -28,6 +28,7 @@ except ImportError as _exc:  # the interface is optional: the CLI works without 
 import compare
 import config
 import convert
+import history
 import preview
 import workflow
 
@@ -177,6 +178,7 @@ class ReportApp(App):
         Binding('ctrl+b', 'open_folder', 'открыть папку', priority=True),
         Binding('ctrl+f', 'toggle_filter', 'тип файлов', priority=True),
         Binding('ctrl+e', 'set_baseline', 'эталон', priority=True),
+        Binding('ctrl+j', 'show_history', 'история', priority=True),
         Binding('ctrl+q', 'quit', 'выход', priority=True),
     ]
     CSS = f"""
@@ -485,6 +487,18 @@ class ReportApp(App):
         line.append(text, style='bold')
         self.query_one('#log', RichLog).write(line)
 
+    def action_show_history(self):
+        output = self.query_one('#output', Input).value.strip()
+        jtl = self.query_one('#jtl', Input).value.strip()
+        target = output or (str(self._default_output(jtl)) if jtl else str(Path.cwd() / 'x'))
+        entries = history.read(Path(target).expanduser())
+        if not entries:
+            self.headline('История пуста: здесь еще не строили отчеты', DIM)
+            return
+        self.headline(f'История запусков ({len(entries)})', ACCENT)
+        for entry in entries[-10:]:
+            self.say(history.format_entry(entry), DIM)
+
     def action_build(self):
         jtl = self.query_one('#jtl', Input).value.strip()
         output = self.query_one('#output', Input).value.strip()
@@ -538,6 +552,9 @@ class ReportApp(App):
     @work(thread=True, exclusive=True, group='build')
     def _build_worker(self, jtl, output, tz, steps, standard, dashboard, baseline, exports):
         try:
+            keep = self.cfg.keep_history if self.cfg else True
+            side = workflow.extra_paths(output).values() if keep else ()
+            archived = history.archive_existing(output, side) if keep else []
             info = convert.create_excel_report(
                 jtl, output, tz=tz, step_pattern=steps,
                 standard_xml=standard, dashboard_xml=dashboard)
@@ -548,6 +565,9 @@ class ReportApp(App):
                     jtl, output, self.cfg, tz, steps, baseline=baseline, exports=exports)
             except convert.ReportError as exc:
                 info['extras_error'] = str(exc)
+            info['archived'] = archived
+            if keep:
+                history.record(output, jtl, info, info['extras'], archived)
         except convert.ReportError as exc:
             self.call_from_thread(self._build_failed, str(exc))
         except Exception as exc:  # an unexpected error must not kill the UI
@@ -576,6 +596,8 @@ class ReportApp(App):
             if not warning.startswith('сверка'):
                 self.say(f'внимание: {warning}', WARN)
         self._show_extras(info)
+        for path in info.get('archived') or []:
+            self.say(f'прошлая версия сохранена: history/{path.name}', DIM)
         self.headline(f'Готово: {info["output"]}', OK)
 
     def _show_extras(self, info):

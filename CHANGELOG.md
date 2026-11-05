@@ -3,6 +3,13 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
+## [Unreleased]
+
+### Added
+- Run history: a report that is about to be overwritten moves to `history/` with its own
+  timestamp, every run is appended to `history/journal.jsonl`. TUI: Ctrl+J shows recent runs.
+  `keep_history = false` in `report.toml` turns it off.
+
 ## [1.0.0] - 2026-11-05
 
 ### Added

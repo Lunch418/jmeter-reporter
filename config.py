@@ -4,6 +4,7 @@ r"""report.toml: defaults for time zone, steps, SLA limits, comparison and expor
     timezone = "Europe/Moscow"     # local | UTC | Europe/Moscow | +05:00
     steps = '^\d{2}\.'             # regex of the labels treated as steps
     output_dir = "reports"         # where reports go when no path is given
+    keep_history = true            # false: overwrite the old report, no history/ folder
     include_raw_data = true        # false: no 'raw data' sheet (huge JTL, Excel row limit)
 
     [compare]
@@ -39,7 +40,7 @@ except ImportError:
 CONFIG_NAME = 'report.toml'
 EXPORT_FORMATS = ('html', 'csv')
 SECTIONS = {'report', 'compare', 'export', 'sla'}
-REPORT_KEYS = {'timezone', 'steps', 'output_dir', 'include_raw_data'}
+REPORT_KEYS = {'timezone', 'steps', 'output_dir', 'include_raw_data', 'keep_history'}
 
 
 class Config:
@@ -49,6 +50,7 @@ class Config:
         self.steps = None
         self.output_dir = None
         self.include_raw_data = True
+        self.keep_history = True
         self.tolerance_pct = 10.0
         self.exports = []
         self.sla = None  # normalized by sla.normalize, or None
@@ -92,7 +94,7 @@ def load_config(path):
         raise convert.ReportError(
             f"[report] в '{path}': неизвестные ключи {', '.join(sorted(bad))}. "
             f"Допустимы: {', '.join(sorted(REPORT_KEYS))}.")
-    for key in REPORT_KEYS - {'include_raw_data'}:
+    for key in REPORT_KEYS - {'include_raw_data', 'keep_history'}:
         if key in report and not isinstance(report[key], str):
             raise convert.ReportError(f"[report] {key} в '{path}' должен быть строкой.")
     if 'include_raw_data' in report:
@@ -100,6 +102,10 @@ def load_config(path):
             raise convert.ReportError(
                 f"[report] include_raw_data в '{path}' должен быть true или false.")
         cfg.include_raw_data = report['include_raw_data']
+    if 'keep_history' in report:
+        if not isinstance(report['keep_history'], bool):
+            raise convert.ReportError(f"[report] keep_history в '{path}' должен быть true или false.")
+        cfg.keep_history = report['keep_history']
     cfg.timezone = report.get('timezone')
     cfg.steps = report.get('steps')
     cfg.output_dir = report.get('output_dir')
