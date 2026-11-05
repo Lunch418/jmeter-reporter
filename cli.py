@@ -54,9 +54,11 @@ def cmd_compare(args):
     cmp = compare.compare_runs(base, new, _steps(args, cfg), tolerance,
                                steps_only=not args.all_labels)
     out = args.output or workflow.extra_paths(args.new)['compare']
-    compare.write_comparison_xlsx(cmp, out)
+    written = compare.write_comparison(cmp, out)
     print(compare.format_comparison(cmp))
-    print(f"Файл: {out}")
+    if written != out:
+        print("openpyxl не установлен: сравнение сохранено как CSV.", file=sys.stderr)
+    print(f"Файл: {written}")
     return 1 if (args.fail_on_regression and cmp.has_regressions) else 0
 
 
@@ -82,7 +84,9 @@ def cmd_export(args):
 
 
 def build_parser():
+    import version
     parser = argparse.ArgumentParser(prog='cli.py', description=__doc__.split('\n\n')[0])
+    parser.add_argument('--version', action='version', version=f'jmeter-report {version.__version__}')
     sub = parser.add_subparsers(dest='command', required=True)
 
     def common(p):
@@ -97,7 +101,8 @@ def build_parser():
     p = sub.add_parser('compare', help='сравнить два прогона')
     p.add_argument('base', help='базовый JTL (до изменений)')
     p.add_argument('new', help='новый JTL (после изменений)')
-    p.add_argument('-o', '--output', help='куда сохранить .xlsx (по умолчанию рядом с новым)')
+    p.add_argument('-o', '--output',
+                   help='куда сохранить .xlsx или .csv (по умолчанию .xlsx рядом с новым)')
     p.add_argument('--tolerance', type=float, help='допуск в процентах (по умолчанию 10)')
     p.add_argument('--all-labels', action='store_true', help='сравнивать все метки, не только шаги')
     p.add_argument('--fail-on-regression', action='store_true',

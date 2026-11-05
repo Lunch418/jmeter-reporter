@@ -2,6 +2,9 @@ import asyncio
 from pathlib import Path
 
 import pytest
+
+pytest.importorskip("textual")  # the interface is optional: skip these tests without it
+
 from textual.widgets import Input, RichLog, Select, Static
 
 import tui

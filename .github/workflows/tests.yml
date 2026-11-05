@@ -13,4 +13,5 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -r requirements-dev.txt
+      - run: ruff check .
       - run: python -m pytest -q --cov=convert --cov=tui --cov=verify --cov=preview --cov=stats --cov=sla --cov=compare --cov=export --cov=config --cov=workflow --cov=cli --cov=tools

@@ -11,8 +11,10 @@ import convert
 class Run:
     """Aggregates of one test run: per label and total."""
 
-    def __init__(self, path, rows, labels, total, first_ts, last_ts):
+    def __init__(self, path, rows, labels, total, first_ts, last_ts, errors=0, has_success=True):
         self.path = path
+        self.errors = errors            # number of failed samples
+        self.has_success = has_success  # the JTL has a 'success' column
         self.rows = rows
         self.labels = labels      # label -> stats dict (same keys as convert.collect_stats)
         self.total = total
@@ -75,6 +77,7 @@ def load_run(path, limit=None):
     total = _new_acc()
     rows = 0
     checked = False
+    has_success = True
     for row in convert.iter_jtl_rows(str(path), limit):
         if not checked:
             missing = {'timeStamp', 'elapsed', 'label'} - set(row.keys())
@@ -83,6 +86,7 @@ def load_run(path, limit=None):
                     f"В '{path}' нет обязательных колонок: {', '.join(sorted(missing))}.\n"
                     f"Найдены: {', '.join(row.keys())}")
             checked = True
+            has_success = 'success' in row
         elapsed = convert.to_int(row.get('elapsed'))
         ts = convert.to_int(row.get('timeStamp'))
         ok = str(row.get('success', '')).strip().upper() == 'TRUE'
@@ -98,4 +102,4 @@ def load_run(path, limit=None):
         raise convert.ReportError(f"Не удалось прочитать данные из JTL файла '{path}' - файл пуст.")
     labels = {label: dict(_finalize(acc), label=label) for label, acc in per_label.items()}
     return Run(str(path), rows, labels, dict(_finalize(total), label='TOTAL'),
-               total['start'], total['end'])
+               total['start'], total['end'], total['errors'], has_success)

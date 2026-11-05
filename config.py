@@ -4,6 +4,7 @@ r"""report.toml: defaults for time zone, steps, SLA limits, comparison and expor
     timezone = "Europe/Moscow"     # local | UTC | Europe/Moscow | +05:00
     steps = '^\d{2}\.'             # regex of the labels treated as steps
     output_dir = "reports"         # where reports go when no path is given
+    include_raw_data = true        # false: no 'raw data' sheet (huge JTL, Excel row limit)
 
     [compare]
     tolerance_pct = 10             # change of avg / p90 above this is a regression
@@ -25,15 +26,20 @@ import sys
 
 import convert
 
-try:  # Python 3.11+
+# TOML parser: stdlib on Python 3.11+, the 'tomli' package if installed, otherwise our own
+# small parser (minitoml.py, enough for report.toml). So nothing has to be installed.
+try:
     import tomllib
-except ImportError:  # 3.9 / 3.10: the same parser as a package
-    import tomli as tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        import minitoml as tomllib
 
 CONFIG_NAME = 'report.toml'
 EXPORT_FORMATS = ('html', 'csv')
 SECTIONS = {'report', 'compare', 'export', 'sla'}
-REPORT_KEYS = {'timezone', 'steps', 'output_dir'}
+REPORT_KEYS = {'timezone', 'steps', 'output_dir', 'include_raw_data'}
 
 
 class Config:
@@ -42,6 +48,7 @@ class Config:
         self.timezone = None
         self.steps = None
         self.output_dir = None
+        self.include_raw_data = True
         self.tolerance_pct = 10.0
         self.exports = []
         self.sla = None  # normalized by sla.normalize, or None
@@ -85,9 +92,14 @@ def load_config(path):
         raise convert.ReportError(
             f"[report] в '{path}': неизвестные ключи {', '.join(sorted(bad))}. "
             f"Допустимы: {', '.join(sorted(REPORT_KEYS))}.")
-    for key in REPORT_KEYS:
+    for key in REPORT_KEYS - {'include_raw_data'}:
         if key in report and not isinstance(report[key], str):
             raise convert.ReportError(f"[report] {key} в '{path}' должен быть строкой.")
+    if 'include_raw_data' in report:
+        if not isinstance(report['include_raw_data'], bool):
+            raise convert.ReportError(
+                f"[report] include_raw_data в '{path}' должен быть true или false.")
+        cfg.include_raw_data = report['include_raw_data']
     cfg.timezone = report.get('timezone')
     cfg.steps = report.get('steps')
     cfg.output_dir = report.get('output_dir')

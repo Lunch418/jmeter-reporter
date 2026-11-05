@@ -1,4 +1,6 @@
-openpyxl>=3.1
-textual>=0.80
-tzdata>=2024.1
-tomli>=2.0; python_version < "3.11"
+# Core: the Excel report and the console tools (convert.py, cli.py). Nothing else is needed.
+# Even this is optional on an isolated machine: cli.py check / export / compare work with the
+# Python standard library alone (see docs/OFFLINE.md).
+openpyxl>=3.0.10                          # only for the .xlsx report
+tomli>=2.0; python_version < "3.11"       # optional: minitoml.py is used when it is absent
+tzdata; platform_system == "Windows"      # named time zones; Linux/macOS use the system ones

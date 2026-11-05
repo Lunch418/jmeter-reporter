@@ -1,0 +1,3 @@
+# Core + the interactive terminal interface (tui.py).
+-r requirements.txt
+textual>=0.86

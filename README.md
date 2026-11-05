@@ -69,12 +69,12 @@ docker compose --profile test run --rm test           # тесты
 
 ### Вариант 2: Python
 
-Нужен Python 3.9 или новее.
+Для отчета нужен Python 3.8 или новее, для интерфейса 3.9 или новее.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate         # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements-tui.txt   # интерфейс + отчет (только отчет: requirements.txt)
 python3 tui.py                    # интерфейс
 ```
 
@@ -242,10 +242,20 @@ error_pct = 1.0
 - `<имя>.csv`: итоговая таблица (метка, выборки, average, median, p90, p95, p99, min, max,
   процент ошибок, throughput). Кодировка UTF-8 с BOM, Excel открывает ее правильно.
 
+## Закрытый контур (без интернета)
+
+Программа не обращается к сети. Три способа доставки: пакет с колесами
+(`python tools/make_offline_bundle.py --with-tui`, потом `pip install --no-index
+--find-links wheels -r requirements-tui.txt`), Docker-образ через `docker save` / `docker load`
+или вообще без пакетов: `cli.py check`, `export` и `compare` работают на одном Python.
+Подробности: [docs/OFFLINE.md](docs/OFFLINE.md).
+
 ## Большие файлы
 
 Excel-отчет держит весь JTL в памяти, потому что записывает его на лист "Исходные данные".
-Для файлов выше 200 000 строк `convert.py` предупредит об этом. Проверка SLA, сравнение и
+Для файлов выше 200 000 строк `convert.py` предупредит об этом. Лист можно не создавать:
+`--no-raw-data` или `include_raw_data = false` в `report.toml` (остальные листы те же, файл
+много меньше). Parquet не добавлялся намеренно: тяжелая зависимость, не нужная для задачи. Проверка SLA, сравнение и
 экспорт читают файл построчно и хранят по одному числу на выборку. На JTL из 405 тысяч строк
 (56 МБ) это около 43 МБ памяти против примерно 470 МБ при чтении целиком.
 
@@ -305,6 +315,10 @@ XML Jenkins везде, кроме `samples/`.
 
 ## Разработка
 
+Правила и порядок релиза: [CONTRIBUTING.md](CONTRIBUTING.md). История версий: [CHANGELOG.md](CHANGELOG.md)
+(SemVer, версия в `version.py`, проверить: `python convert.py --version`). Проект намеренно не
+пакет для pip: модули лежат в корне, запуск через `python файл.py`.
+
 ```bash
 pip install -r requirements-dev.txt
 python3 -m pytest -q
@@ -329,10 +343,12 @@ docker build --target test .
 | `cli.py` | команды `check`, `compare`, `export` |
 | `preview.py` | быстрая сводка по файлу для предпросмотра |
 | `tui.py` | терминальный интерфейс (Textual) |
-| `tools/` | генератор синтетических данных и снимок интерфейса для README |
+| `minitoml.py` | запасной разбор TOML без внешних пакетов |
+| `version.py` | номер версии |
+| `tools/` | синтетические данные, снимок интерфейса, офлайн-пакет, заметки релиза |
 | `tests/` | тесты (pytest) |
 | `Dockerfile`, `docker-compose.yml`, `report.sh` | запуск в контейнере |
-| `.github/workflows/` | тесты (`tests.yml`) и публикация образа (`docker.yml`) |
+| `.github/workflows/` | тесты (`tests.yml`), образ (`docker.yml`), релиз по тегу `v*` (`release.yml`) |
 
 ## Если что-то не работает
 

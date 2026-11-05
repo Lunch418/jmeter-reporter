@@ -16,11 +16,6 @@ import sys
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from openpyxl.utils import get_column_letter
-from openpyxl.chart import BarChart, Reference
-
 import verify
 
 # Выше этого числа строк отчет строится долго и держит весь JTL в памяти.
@@ -40,11 +35,21 @@ class ReportError(Exception):
 
 # ---------------------------------------------------------------- время ----
 
+# Запасной вариант для Python без zoneinfo (3.8): действует только для этих имен.
+FIXED_ZONES = {
+    'Europe/Kaliningrad': 2, 'Europe/Moscow': 3, 'Europe/Samara': 4,
+    'Asia/Yekaterinburg': 5, 'Asia/Omsk': 6, 'Asia/Novosibirsk': 7, 'Asia/Krasnoyarsk': 7,
+    'Asia/Irkutsk': 8, 'Asia/Yakutsk': 9, 'Asia/Vladivostok': 10, 'Asia/Magadan': 11,
+    'Asia/Kamchatka': 12,
+}
+
+
 def resolve_timezone(spec):
     """Часовой пояс для отображения меток времени.
 
     None или 'local' -> локальный пояс машины (значение по умолчанию).
-    'UTC', 'Europe/Moscow', 'Asia/Yekaterinburg' -> именованный пояс (нужен Python 3.9+).
+    'UTC' -> работает везде; 'Europe/Moscow', 'Asia/Yekaterinburg' -> именованный пояс
+    (нужен Python 3.9+; на 3.8 российские пояса берутся из таблицы FIXED_ZONES).
     '+05:00', '-03:30', '+5' -> фиксированное смещение, работает на любом Python.
     """
     if spec is None or spec.strip().lower() == 'local':
@@ -58,9 +63,22 @@ def resolve_timezone(spec):
         delta = timedelta(hours=int(offset.group(2)), minutes=int(offset.group(3) or 0))
         return timezone(sign * delta)
 
+    if spec.upper() in ('UTC', 'GMT', 'Z'):
+        return timezone.utc  # не требует базы часовых поясов
+
     try:
         from zoneinfo import ZoneInfo
     except ImportError:
+        try:  # Python 3.8: пакет-бэкпорт, если он случайно установлен
+            from backports.zoneinfo import ZoneInfo
+        except ImportError:
+            ZoneInfo = None
+    if ZoneInfo is None:
+        # Python 3.8 без zoneinfo: российские пояса как фиксированные сдвиги (в России
+        # нет перехода на летнее время с 2014 года), остальные - только смещением.
+        hours = FIXED_ZONES.get(spec)
+        if hours is not None:
+            return timezone(timedelta(hours=hours))
         raise ReportError(
             f"Именованный часовой пояс '{spec}' требует Python 3.9+.\n"
             f"На более старой версии укажите смещение явно, например: --tz +03:00"
@@ -207,35 +225,81 @@ def collect_stats(rows):
 
 # ---------------------------------------------------------------- отчёт ----
 
-def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN,
-                        standard_xml=None, dashboard_xml=None):
-    """Строит xlsx-отчёт. Возвращает словарь со сводкой (для CLI и UI)."""
-    jtl_data = parse_jtl_file(jtl_file)
-
-    if not jtl_data:
-        raise ReportError(f"Не удалось прочитать данные из JTL файла '{jtl_file}' - файл пуст.")
-
-    missing = {'timeStamp', 'elapsed', 'label'} - set(jtl_data[0].keys())
-    if missing:
+def _import_openpyxl():
+    """openpyxl нужен только для Excel-отчета; SLA, сравнение и экспорт работают без него."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.chart import BarChart, Reference
+        from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+        from openpyxl.utils import get_column_letter
+    except ImportError:
         raise ReportError(
-            f"В '{jtl_file}' нет обязательных колонок: {', '.join(sorted(missing))}.\n"
-            f"Найдены: {', '.join(jtl_data[0].keys())}"
-        )
+            "Для построения Excel-отчета нужен пакет openpyxl (pip install openpyxl).\n"
+            "Без него работают проверка SLA, сравнение и экспорт: python3 cli.py --help")
+    return (Workbook, BarChart, Reference, Alignment, Border, Font, PatternFill, Side,
+            get_column_letter)
+
+
+def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STEP_PATTERN,
+                        standard_xml=None, dashboard_xml=None, include_raw_data=True):
+    """Строит xlsx-отчёт. Возвращает словарь со сводкой (для CLI и UI).
+
+    include_raw_data=False пропускает лист 'Исходные данные': файл читается потоком
+    (память не растет с размером JTL), а лимит строк Excel перестает быть проблемой.
+    Остальные листы при этом получаются теми же самыми.
+    """
+    (Workbook, BarChart, Reference, Alignment, Border, Font, PatternFill, Side,
+     get_column_letter) = _import_openpyxl()
+
     warnings = []
-    if len(jtl_data) > LARGE_FILE_ROWS:
-        warnings.append(f"большой файл ({len(jtl_data)} строк): отчет строится долго и требует "
-                        f"много памяти; проверка SLA, сравнение и экспорт (cli.py) читают файл потоком")
-    if 'success' not in jtl_data[0]:
+    if include_raw_data:
+        jtl_data = parse_jtl_file(jtl_file)
+
+        if not jtl_data:
+            raise ReportError(
+                f"Не удалось прочитать данные из JTL файла '{jtl_file}' - файл пуст.")
+
+        missing = {'timeStamp', 'elapsed', 'label'} - set(jtl_data[0].keys())
+        if missing:
+            raise ReportError(
+                f"В '{jtl_file}' нет обязательных колонок: {', '.join(sorted(missing))}.\n"
+                f"Найдены: {', '.join(jtl_data[0].keys())}"
+            )
+        n_rows = len(jtl_data)
+        has_success = 'success' in jtl_data[0]
+        n_errors = sum(1 for r in jtl_data
+                       if str(r.get('success', '')).strip().upper() != 'TRUE')
+
+        # Порядок меток - как в JTL, а не по алфавиту: он совпадает с порядком
+        # шагов сценария, и заказчик читает отчёт именно в этом порядке.
+        grouped = defaultdict(list)
+        for row in jtl_data:
+            grouped[row['label']].append(row)
+
+        stats = [dict(collect_stats(rows), label=label) for label, rows in grouped.items()]
+        total_stats = collect_stats(jtl_data)
+
+        # min/max, а не первая и последняя строка файла: JMeter пишет строки
+        # в порядке ЗАВЕРШЕНИЯ замеров, поэтому при нескольких потоках последняя
+        # строка почти никогда не является самой поздней по времени.
+        all_starts = [to_int(r.get('timeStamp')) for r in jtl_data]
+        all_ends = [to_int(r.get('timeStamp')) + to_int(r.get('elapsed')) for r in jtl_data]
+        first_ts, last_ts = min(all_starts), max(all_ends)
+    else:
+        import stats as stats_module  # те же формулы, но без списка строк в памяти
+        run = stats_module.load_run(jtl_file)
+        n_rows, n_errors, has_success = run.rows, run.errors, run.has_success
+        stats = list(run.labels.values())
+        total_stats = {k: v for k, v in run.total.items() if k != 'label'}
+        first_ts, last_ts = run.first_ts, run.last_ts
+        jtl_data = None
+
+    if n_rows > LARGE_FILE_ROWS and include_raw_data:
+        warnings.append(f"большой файл ({n_rows} строк): отчет строится долго и требует "
+                        f"много памяти; можно отключить лист 'Исходные данные' (--no-raw-data), "
+                        f"а проверка SLA, сравнение и экспорт (cli.py) читают файл потоком")
+    if not has_success:
         warnings.append("в JTL нет колонки 'success' - все замеры будут учтены как ошибочные")
-
-    # Порядок меток - как в JTL, а не по алфавиту: он совпадает с порядком
-    # шагов сценария, и заказчик читает отчёт именно в этом порядке.
-    grouped = defaultdict(list)
-    for row in jtl_data:
-        grouped[row['label']].append(row)
-
-    stats = [dict(collect_stats(rows), label=label) for label, rows in grouped.items()]
-    total_stats = collect_stats(jtl_data)
 
     # Сверка с XML-артефактами Jenkins (необязательная).
     check_rows = []
@@ -253,13 +317,6 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
                           f"{check['checked']} (см. лист 'Сверка')")
     else:
         warnings_after = None
-
-    # min/max, а не первая и последняя строка файла: JMeter пишет строки
-    # в порядке ЗАВЕРШЕНИЯ замеров, поэтому при нескольких потоках последняя
-    # строка почти никогда не является самой поздней по времени.
-    all_starts = [to_int(r.get('timeStamp')) for r in jtl_data]
-    all_ends = [to_int(r.get('timeStamp')) + to_int(r.get('elapsed')) for r in jtl_data]
-    first_ts, last_ts = min(all_starts), max(all_ends)
 
     tz_label = timezone_label(first_ts, tz)
     start_time = format_timestamp(first_ts, tz)
@@ -288,10 +345,8 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
 
     summary_rows = [
         (3, 'Файл JTL', os.path.basename(jtl_file), f'Начало тестирования ({tz_label})', start_time),
-        (4, 'Всего выборок', len(jtl_data), f'Окончание тестирования ({tz_label})', end_time),
-        (5, 'Ошибок', sum(1 for r in jtl_data
-                          if str(r.get('success', '')).strip().upper() != 'TRUE'),
-         'Длительность', duration_str),
+        (4, 'Всего выборок', n_rows, f'Окончание тестирования ({tz_label})', end_time),
+        (5, 'Ошибок', n_errors, 'Длительность', duration_str),
     ]
     for row, left_label, left_value, right_label, right_value in summary_rows:
         for column, value, fill in (
@@ -441,33 +496,34 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
             ws_check.column_dimensions[get_column_letter(col)].width = width
 
     # ================= ЛИСТ 3: ИСХОДНЫЕ ДАННЫЕ =================
-    ws3 = wb.create_sheet('Исходные данные')
-    raw_headers = list(jtl_data[0].keys())
-    for col, header in enumerate(raw_headers, 1):
-        cell = ws3.cell(row=1, column=col, value=header)
-        cell.font = header_font_white
-        cell.fill = header_fill_blue
-        cell.border = thin_border
-        cell.alignment = Alignment(horizontal='center')
-
-    numeric_columns = {'timeStamp', 'elapsed', 'bytes', 'sentBytes', 'grpThreads',
-                       'allThreads', 'Latency', 'IdleTime', 'Connect'}
-    raw_limit = EXCEL_MAX_ROWS - 1
-    truncated = len(jtl_data) - raw_limit
-
-    for r_idx, row in enumerate(jtl_data[:raw_limit], start=2):
+    if include_raw_data:
+        ws3 = wb.create_sheet('Исходные данные')
+        raw_headers = list(jtl_data[0].keys())
         for col, header in enumerate(raw_headers, 1):
-            value = row.get(header, '')
-            # Числа записываются числами, иначе Excel показывает их как текст
-            # и по ним нельзя ни отсортировать, ни построить формулу.
-            if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
-                value = int(value)
-            cell = ws3.cell(row=r_idx, column=col, value=value)
+            cell = ws3.cell(row=1, column=col, value=header)
+            cell.font = header_font_white
+            cell.fill = header_fill_blue
             cell.border = thin_border
+            cell.alignment = Alignment(horizontal='center')
 
-    if truncated > 0:
-        warnings.append(f"лист 'Исходные данные' обрезан: {truncated} строк "
-                        f"не поместились в лимит Excel ({EXCEL_MAX_ROWS} строк)")
+        numeric_columns = {'timeStamp', 'elapsed', 'bytes', 'sentBytes', 'grpThreads',
+                           'allThreads', 'Latency', 'IdleTime', 'Connect'}
+        raw_limit = EXCEL_MAX_ROWS - 1
+        truncated = len(jtl_data) - raw_limit
+
+        for r_idx, row in enumerate(jtl_data[:raw_limit], start=2):
+            for col, header in enumerate(raw_headers, 1):
+                value = row.get(header, '')
+                # Числа записываются числами, иначе Excel показывает их как текст
+                # и по ним нельзя ни отсортировать, ни построить формулу.
+                if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
+                    value = int(value)
+                cell = ws3.cell(row=r_idx, column=col, value=value)
+                cell.border = thin_border
+
+        if truncated > 0:
+            warnings.append(f"лист 'Исходные данные' обрезан: {truncated} строк "
+                            f"не поместились в лимит Excel ({EXCEL_MAX_ROWS} строк)")
 
     if warnings_after:
         warnings.append(warnings_after)
@@ -480,11 +536,11 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     return {
         'output': output_file,
         'sheets': list(wb.sheetnames),
-        'rows': len(jtl_data),
+        'rows': n_rows,
         'steps': len(main_steps),
         'labels': len(stats),
-        'errors': sum(1 for r in jtl_data
-                      if str(r.get('success', '')).strip().upper() != 'TRUE'),
+        'errors': n_errors,
+        'raw_data': include_raw_data,
         'timezone': tz_label,
         'start': start_time,
         'end': end_time,
@@ -505,6 +561,10 @@ USAGE = (
     "  --standard F   standardResults.xml: сверить расчёт с цифрами JMeter.\n"
     "  --dashboard F  dashBoard_jmeter.xml: то же, по average/median/90/95.\n"
     "                 (в четырёхаргументной форме оба файла берутся из позиций)\n"
+    "  --no-raw-data  не добавлять лист 'Исходные данные': для очень больших JTL\n"
+    "                 (лимит строк Excel, память). Остальные листы те же.\n"
+    "  --raw-data     добавить лист 'Исходные данные' (по умолчанию; перекрывает конфиг).\n"
+    "  --version      версия программы.\n"
     "  --config F     report.toml с умолчаниями (пояс, шаги); по умолчанию берется\n"
     "                 report.toml из текущей папки, если он есть.\n"
     "  --steps RE  Регулярное выражение для шагов на листе 'График времени'.\n"
@@ -521,7 +581,7 @@ VALUE_OPTIONS = ('--tz', '--steps', '--standard', '--dashboard', '--config')
 def parse_args(argv):
     """Разбор командной строки. Возвращает словарь параметров."""
     options = {'--tz': None, '--steps': None, '--standard': None, '--dashboard': None,
-               '--config': None}
+               '--config': None, '--raw-data': None}
     positional = []
     i = 0
     while i < len(argv):
@@ -529,6 +589,14 @@ def parse_args(argv):
         if arg in ('-h', '--help'):
             print(USAGE)
             sys.exit(0)
+        if arg == '--version':
+            import version
+            print(f'jmeter-report {version.__version__}')
+            sys.exit(0)
+        if arg in ('--no-raw-data', '--raw-data'):
+            options['--raw-data'] = (arg == '--raw-data')
+            i += 1
+            continue
         name, eq, inline = arg.partition('=')
         if name in VALUE_OPTIONS:
             if eq:
@@ -564,6 +632,8 @@ def parse_args(argv):
     if cfg:
         options['--tz'] = options['--tz'] or cfg.timezone
         options['--steps'] = options['--steps'] or cfg.steps
+        if options['--raw-data'] is None:
+            options['--raw-data'] = cfg.include_raw_data
     options['--steps'] = options['--steps'] or DEFAULT_STEP_PATTERN
 
     for path in (jtl_file, options['--standard'], options['--dashboard']):
@@ -576,7 +646,8 @@ def parse_args(argv):
         sys.exit(str(exc))
     return {'jtl': jtl_file, 'output': output_file, 'tz': tz,
             'steps': options['--steps'], 'standard': options['--standard'],
-            'dashboard': options['--dashboard']}
+            'dashboard': options['--dashboard'],
+            'raw_data': True if options['--raw-data'] is None else options['--raw-data']}
 
 
 def main(argv=None):
@@ -584,7 +655,8 @@ def main(argv=None):
     try:
         info = create_excel_report(
             args['jtl'], args['output'], tz=args['tz'], step_pattern=args['steps'],
-            standard_xml=args['standard'], dashboard_xml=args['dashboard'])
+            standard_xml=args['standard'], dashboard_xml=args['dashboard'],
+            include_raw_data=args['raw_data'])
     except ReportError as exc:
         sys.exit(str(exc))
     for warning in info['warnings']:

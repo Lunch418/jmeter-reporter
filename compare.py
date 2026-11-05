@@ -122,6 +122,47 @@ def format_comparison(cmp):
     return '\n'.join(lines)
 
 
+CSV_HEADERS = ['label', 'status', 'avg_base', 'avg_new', 'avg_delta_pct', 'p90_base', 'p90_new',
+               'p90_delta_pct', 'error_pct_base', 'error_pct_new']
+
+
+def write_comparison_csv(cmp, path):
+    """The same table as plain CSV (UTF-8 with BOM). Works without any third-party package."""
+    import csv
+    try:
+        with open(path, 'w', encoding='utf-8-sig', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(CSV_HEADERS)
+            for r in cmp.rows:
+                def pct(v):
+                    return '' if v is None else round(v, 2)
+                writer.writerow([r['label'], r['status'], r['avg_base'], r['avg_new'],
+                                 pct(r['avg_delta']), r['p90_base'], r['p90_new'],
+                                 pct(r['p90_delta']), round(r['err_base'], 3),
+                                 round(r['err_new'], 3)])
+    except OSError as exc:
+        raise convert.ReportError(f"Не удалось сохранить '{path}': {exc}")
+
+
+def write_comparison(cmp, path):
+    """Write the comparison; returns the path actually written.
+
+    .xlsx needs openpyxl. If it is not installed (isolated machine) or the name ends with
+    .csv, a CSV file is written instead.
+    """
+    path = str(path)
+    if not path.lower().endswith('.csv'):
+        try:
+            import openpyxl  # noqa: F401
+        except ImportError:
+            path = path.rsplit('.', 1)[0] + '.csv' if '.' in path else path + '.csv'
+    if path.lower().endswith('.csv'):
+        write_comparison_csv(cmp, path)
+    else:
+        write_comparison_xlsx(cmp, path)
+    return path
+
+
 def write_comparison_xlsx(cmp, path):
     """Separate workbook with one sheet 'Сравнение' (the main report is not touched)."""
     from openpyxl import Workbook

@@ -8,7 +8,7 @@ import stats
 
 def run_of(make_run, avg, name, err=0, extra=()):
     n = 10
-    samples = [(f'01. Step', avg, i >= err) for i in range(n)] + list(extra)
+    samples = [('01. Step', avg, i >= err) for i in range(n)] + list(extra)
     return make_run(samples, name)
 
 

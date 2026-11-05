@@ -1,0 +1,32 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m pytest -q
+      - name: Tag must match version.py
+        run: |
+          v=$(python -c "import version; print(version.__version__)")
+          test "v$v" = "${GITHUB_REF_NAME}"
+      - name: Build offline bundle
+        run: python tools/make_offline_bundle.py --with-tui
+      - name: Release notes
+        run: python tools/changelog_section.py "${GITHUB_REF_NAME}" > notes.md
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/*.zip --title "${GITHUB_REF_NAME}" --notes-file notes.md

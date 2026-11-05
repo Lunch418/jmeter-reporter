@@ -8,8 +8,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     COLORTERM=truecolor \
     HOME=/tmp
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-tui.txt ./
+# The image has the interface; tzdata because slim images have no system time zones.
+RUN pip install --no-cache-dir -r requirements-tui.txt tzdata
 COPY *.py report.example.toml docker-entrypoint.sh ./
 COPY tools/ tools/
 COPY samples/ samples/

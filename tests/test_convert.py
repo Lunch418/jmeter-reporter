@@ -282,3 +282,36 @@ def test_large_file_warning(tmp_path, monkeypatch):
     f.write_text('timeStamp,elapsed,label,success\n' + '1,1,a,true\n' * 5, encoding='utf-8')
     info = convert.create_excel_report(str(f), str(tmp_path / 'o.xlsx'))
     assert any('большой файл' in w for w in info['warnings'])
+
+
+# ---------------------------------------------- time zones without zoneinfo ----
+
+def test_utc_does_not_need_zoneinfo(monkeypatch):
+    import builtins
+    real_import = builtins.__import__
+
+    def no_zoneinfo(name, *a, **k):
+        if name in ('zoneinfo', 'backports.zoneinfo', 'backports'):
+            raise ImportError(name)
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, '__import__', no_zoneinfo)
+    assert convert.resolve_timezone('UTC').utcoffset(None) == dt.timedelta(0)
+    assert convert.resolve_timezone('gmt').utcoffset(None) == dt.timedelta(0)
+
+
+def test_russian_zones_fall_back_to_fixed_offsets(monkeypatch):
+    import builtins
+    real_import = builtins.__import__
+
+    def no_zoneinfo(name, *a, **k):
+        if name in ('zoneinfo', 'backports.zoneinfo', 'backports'):
+            raise ImportError(name)
+        return real_import(name, *a, **k)
+
+    monkeypatch.setattr(builtins, '__import__', no_zoneinfo)
+    assert convert.resolve_timezone('Europe/Moscow').utcoffset(None) == dt.timedelta(hours=3)
+    assert convert.resolve_timezone('Asia/Vladivostok').utcoffset(None) == dt.timedelta(hours=10)
+    with pytest.raises(convert.ReportError, match='Python 3.9'):
+        convert.resolve_timezone('America/New_York')
+    assert set(convert.FIXED_ZONES) >= {'Europe/Moscow', 'Asia/Yekaterinburg'}

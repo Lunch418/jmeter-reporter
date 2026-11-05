@@ -1,4 +1,7 @@
 import pytest
+
+pytest.importorskip("rich")  # comes with textual; the interface is optional
+
 from rich.console import Console
 
 import convert

@@ -11,19 +11,24 @@ import os
 import sys
 from pathlib import Path
 
-from rich.text import Text
-from textual import on, work
-from textual.app import App, ComposeResult
-from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
-from textual.theme import Theme
-from textual.widgets import DirectoryTree, Input, RichLog, Select, Static
+try:
+    from rich.text import Text
+    from textual import on, work
+    from textual.app import App, ComposeResult
+    from textual.binding import Binding
+    from textual.containers import Horizontal, Vertical, VerticalScroll
+    from textual.theme import Theme
+    from textual.widgets import DirectoryTree, Input, RichLog, Select, Static
+except ImportError as _exc:  # the interface is optional: the CLI works without it
+    if __name__ == '__main__':
+        sys.exit("Для интерфейса нужен пакет textual: pip install -r requirements-tui.txt\n"
+                 "Без него работают convert.py и cli.py (консольный режим).")
+    raise
 
 import compare
 import config
 import convert
 import preview
-import sla
 import workflow
 
 ACCENT = '#d97757'   # the orange of Claude Code

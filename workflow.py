@@ -36,9 +36,9 @@ def run_extras(jtl, output, cfg=None, tz=None, steps=convert.DEFAULT_STEP_PATTER
         tol = tolerance if tolerance is not None else (
             cfg.tolerance_pct if cfg else compare.DEFAULT_TOLERANCE_PCT)
         cmp = compare.compare_runs(base, run, steps, tol)
-        compare.write_comparison_xlsx(cmp, paths['compare'])
+        written = compare.write_comparison(cmp, paths['compare'])
         result['comparison'] = cmp
-        result['files'].append(paths['compare'])
+        result['files'].append(written)
     if 'html' in wanted:
         export.write_html(run, paths['html'], tz, steps, result['verdict'])
         result['files'].append(paths['html'])

@@ -1,0 +1,15 @@
+# Tool configuration only. The project is a set of scripts you run from the folder
+# (python3 convert.py / cli.py / tui.py), not an installable package.
+# Dependency groups: requirements.txt (core), requirements-tui.txt (+ interface),
+# requirements-dev.txt (+ tests and linter).
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+exclude = [".venv", "venv", "docs", "samples"]
+
+[tool.ruff.lint]
+# Real bugs only (syntax errors, undefined names, unused imports/variables): no style churn.
+select = ["E9", "F"]
