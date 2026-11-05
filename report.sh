@@ -14,7 +14,7 @@ fi
 dir="$(cd "$dir" && pwd)"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# JMETER_REPORT_IMAGE=ghcr.io/lunch418/jenkins ./report.sh  -> use the published image
+# JMETER_REPORT_IMAGE=ghcr.io/lunch418/jmeter-reporter ./report.sh  -> use the published image
 image="${JMETER_REPORT_IMAGE:-jmeter-report}"
 if [ -z "${JMETER_REPORT_IMAGE:-}" ] && ! docker image inspect jmeter-report >/dev/null 2>&1; then
   docker build --target runtime -t jmeter-report "$here"
