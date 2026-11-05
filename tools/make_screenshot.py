@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import tui  # noqa: E402
+from jmeter_reporter import tui  # noqa: E402
 from textual.widgets import Input  # noqa: E402
 
 

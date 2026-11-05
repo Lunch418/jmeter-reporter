@@ -4,8 +4,8 @@ pytest.importorskip("rich")  # comes with textual; the interface is optional
 
 from rich.console import Console
 
-import convert
-import preview
+from jmeter_reporter import convert
+from jmeter_reporter import preview
 
 
 def _text(renderable, width=100):

@@ -1,4 +1,4 @@
-import cli
+from jmeter_reporter import cli
 
 
 def write_cfg(tmp_path, text):

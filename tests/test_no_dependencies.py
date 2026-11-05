@@ -31,33 +31,33 @@ def work(tmp_path):
 
 
 def test_core_modules_import_without_third_party_packages(work):
-    out = run_blocked('import convert, verify, stats, sla, compare, export, config, '
+    out = run_blocked('from jmeter_reporter import convert, verify, stats, sla, compare, export, config, '
                       'workflow, cli, minitoml\nprint("ok")', work)
     assert out.returncode == 0, out.stderr
     assert out.stdout.strip() == 'ok'
 
 
 def test_check_works(work):
-    out = run_blocked("import cli, sys\nsys.exit(cli.main(['check', 'a.jtl']))", work)
+    out = run_blocked("from jmeter_reporter import cli\nimport sys\nsys.exit(cli.main(['check', 'a.jtl']))", work)
     assert out.returncode == 0, out.stderr
     assert 'PASS: проверено' in out.stdout
 
 
 def test_check_fails_with_exit_1(work):
     (work / 'report.toml').write_text('[sla]\np90_ms = 1\n', encoding='utf-8')
-    out = run_blocked("import cli, sys\nsys.exit(cli.main(['check', 'a.jtl']))", work)
+    out = run_blocked("from jmeter_reporter import cli\nimport sys\nsys.exit(cli.main(['check', 'a.jtl']))", work)
     assert out.returncode == 1 and 'FAIL: проверено' in out.stdout
 
 
 def test_export_html_and_csv_work(work):
-    out = run_blocked("import cli, sys\n"
+    out = run_blocked("from jmeter_reporter import cli\nimport sys\n"
                       "sys.exit(cli.main(['export', 'a.jtl', '--format', 'html', 'csv']))", work)
     assert out.returncode == 0, out.stderr
     assert (work / 'a_report.html').exists() and (work / 'a_report.csv').exists()
 
 
 def test_compare_falls_back_to_csv(work):
-    out = run_blocked("import cli, sys\nsys.exit(cli.main(['compare', 'a.jtl', 'b.jtl']))", work)
+    out = run_blocked("from jmeter_reporter import cli\nimport sys\nsys.exit(cli.main(['compare', 'a.jtl', 'b.jtl']))", work)
     assert out.returncode == 0, out.stderr
     assert 'сохранено как CSV' in out.stderr
     assert (work / 'b_compare.csv').exists() and not (work / 'b_compare.xlsx').exists()
@@ -65,7 +65,7 @@ def test_compare_falls_back_to_csv(work):
 
 
 def test_excel_report_explains_what_is_missing(work):
-    out = run_blocked("import convert\n"
+    out = run_blocked("from jmeter_reporter import convert\n"
                       "try:\n    convert.create_excel_report('a.jtl', 'o.xlsx')\n"
                       "except convert.ReportError as e:\n    print(e)\n", work)
     assert out.returncode == 0, out.stderr
@@ -73,14 +73,14 @@ def test_excel_report_explains_what_is_missing(work):
 
 
 def test_convert_cli_reports_missing_openpyxl_cleanly(work):
-    out = run_blocked("import convert, sys\nconvert.main(['a.jtl', 'o.xlsx'])", work)
-    assert out.returncode != 0
+    out = run_blocked("from jmeter_reporter import convert\nimport sys\nsys.exit(convert.main(['a.jtl', 'o.xlsx']))", work)
+    assert out.returncode == 2
     assert 'openpyxl' in out.stderr and 'Traceback' not in out.stderr
 
 
 def test_config_uses_the_builtin_toml_parser(work):
-    out = run_blocked("import config\nprint(config.tomllib.__name__)", work)
-    assert out.stdout.strip() == 'minitoml'
+    out = run_blocked("from jmeter_reporter import config\nprint(config.tomllib.__name__)", work)
+    assert out.stdout.strip().endswith('minitoml')
 
 
 def test_tui_explains_what_is_missing(work):

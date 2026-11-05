@@ -3,7 +3,7 @@ import csv
 import html
 import os
 
-import convert
+from . import convert
 
 CSV_HEADERS = ['label', 'samples', 'avg', 'median', 'p90', 'p95', 'p99', 'min', 'max',
                'error_pct', 'throughput', 'received_kb_s', 'sent_kb_s']

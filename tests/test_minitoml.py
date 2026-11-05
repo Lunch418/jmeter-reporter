@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-import minitoml
+from jmeter_reporter import minitoml
 
 try:
     import tomllib as real
@@ -95,8 +95,8 @@ def test_config_falls_back_to_minitoml(monkeypatch, tmp_path):
         "import sys\n"
         "sys.modules['tomllib'] = None\n"      # None in sys.modules makes the import fail
         "sys.modules['tomli'] = None\n"
-        "import config\n"
-        "assert config.tomllib.__name__ == 'minitoml', config.tomllib\n"
+        "from jmeter_reporter import config\n"
+        "assert config.tomllib.__name__.endswith('minitoml'), config.tomllib\n"
         "cfg = config.load_config('report.example.toml')\n"
         "print(cfg.timezone, cfg.sla['defaults'])\n"
     )

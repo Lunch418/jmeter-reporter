@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-import config
-import convert
+from jmeter_reporter import config
+from jmeter_reporter import convert
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -71,5 +71,5 @@ def test_validator_entry_point(tmp_path, capsys, monkeypatch):
     path = write(tmp_path, '[report]\ntimezone = "UTC"\n')
     monkeypatch.setattr('sys.argv', ['config.py', path])
     import runpy
-    runpy.run_path(str(ROOT / 'config.py'), run_name='__main__')
+    runpy.run_module('jmeter_reporter.config', run_name='__main__')
     assert 'OK' in capsys.readouterr().out

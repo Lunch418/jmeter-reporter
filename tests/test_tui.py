@@ -7,7 +7,7 @@ pytest.importorskip("textual")  # the interface is optional: skip these tests wi
 
 from textual.widgets import Input, RichLog, Select, Static
 
-import tui
+from jmeter_reporter import tui
 
 
 def run(coro):

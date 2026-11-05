@@ -21,15 +21,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from version import __version__  # noqa: E402
+from jmeter_reporter.version import __version__  # noqa: E402
 
 # Files the program needs at run time (everything else is development-only).
 RUNTIME_FILES = [
-    'cli.py', 'compare.py', 'config.py', 'convert.py', 'export.py', 'history.py', 'minitoml.py',
-    'preview.py', 'sla.py', 'stats.py', 'tui.py', 'verify.py', 'version.py', 'workflow.py',
-    'report.example.toml', 'requirements.txt', 'requirements-tui.txt', 'README.md',
-    'CHANGELOG.md', 'docs/OFFLINE.md',
+    'cli.py', 'convert.py', 'tui.py', 'report.example.toml', 'requirements.txt',
+    'requirements-tui.txt', 'README.md', 'CHANGELOG.md', 'docs/OFFLINE.md',
 ]
+# The whole package folder is added as well (every .py file in it).
+PACKAGE_DIR = 'jmeter_reporter'
 
 INSTALL_TXT = """Offline install (no internet needed)
 ====================================
@@ -73,7 +73,8 @@ def build(with_tui=False, python_version=None, platform=None, out_dir=None, skip
         shutil.rmtree(stage)
     (stage / 'wheels').mkdir(parents=True)
 
-    for rel in RUNTIME_FILES:
+    package_files = sorted(str(p.relative_to(ROOT)) for p in (ROOT / PACKAGE_DIR).glob('*.py'))
+    for rel in RUNTIME_FILES + package_files:
         src = ROOT / rel
         if not src.exists():
             raise SystemExit(f'Missing runtime file: {rel}')

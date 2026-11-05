@@ -43,7 +43,7 @@
 Готовый образ из GitHub Container Registry, без сборки:
 
 ```bash
-docker run --rm -it -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter
+docker run --rm -it --user "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter
 JMETER_REPORT_IMAGE=ghcr.io/lunch418/jmeter-reporter ./report.sh ~/Загрузки
 ```
 
@@ -54,9 +54,9 @@ JMETER_REPORT_IMAGE=ghcr.io/lunch418/jmeter-reporter ./report.sh ~/Загруз�
 Остальные команды в контейнере: `convert`, `cli`, `sample`.
 
 ```bash
-docker run --rm -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter convert /data/jmeter.jtl /data/report.xlsx
-docker run --rm -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter cli check /data/jmeter.jtl
-docker run --rm -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter cli compare /data/old.jtl /data/new.jtl
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter convert /data/jmeter.jtl /data/report.xlsx
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter cli check /data/jmeter.jtl
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/data" ghcr.io/lunch418/jmeter-reporter cli compare /data/old.jtl /data/new.jtl
 ```
 
 Через Docker Compose (папка `./data` рядом с проектом):

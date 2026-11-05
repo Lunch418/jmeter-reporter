@@ -60,7 +60,7 @@ In the contour:
 
 ```
 gunzip -c jmeter-report.tar.gz | docker load
-docker run --rm --network none -v "$PWD:/data" jmeter-report convert /data/run.jtl
+docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/data" jmeter-report convert /data/run.jtl
 ```
 
 ## Route 3 - no packages at all

@@ -1,8 +1,8 @@
 import pytest
 
-import config
-import convert
-import sla
+from jmeter_reporter import config
+from jmeter_reporter import convert
+from jmeter_reporter import sla
 
 
 def norm(**kw):

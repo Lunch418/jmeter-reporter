@@ -1,7 +1,7 @@
 """SLA limits and the PASS / FAIL verdict for a run."""
 import re
 
-import convert
+from . import convert
 
 # limit name -> (key in stats, kind). 'max' = the value must not exceed the limit,
 # 'min' = the value must not be below it.

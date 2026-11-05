@@ -6,11 +6,12 @@ from pathlib import Path
 
 import pytest
 
-import version
+from jmeter_reporter import version
 from tools import changelog_section, make_offline_bundle
 
 ROOT = Path(__file__).resolve().parent.parent
-APP_MODULES = {p.name for p in ROOT.glob('*.py')}
+LAUNCHERS = {'cli.py', 'convert.py', 'tui.py'}
+APP_MODULES = sorted(str(p.relative_to(ROOT)) for p in ROOT.glob('jmeter_reporter/*.py'))
 
 
 def test_version_is_semver():
@@ -26,10 +27,10 @@ def test_changelog_section_missing_version():
     assert changelog_section.section('9.9.9') is None
 
 
-def test_bundle_lists_every_app_module():
-    listed = set(make_offline_bundle.RUNTIME_FILES)
-    missing = APP_MODULES - listed
-    assert not missing, f'add to RUNTIME_FILES: {sorted(missing)}'
+def test_bundle_lists_every_launcher():
+    root_py = {p.name for p in ROOT.glob('*.py')}
+    assert root_py == LAUNCHERS, 'new root script: add it to RUNTIME_FILES and LAUNCHERS'
+    assert LAUNCHERS <= set(make_offline_bundle.RUNTIME_FILES)
     for rel in make_offline_bundle.RUNTIME_FILES:
         assert (ROOT / rel).exists(), rel
 
@@ -40,11 +41,12 @@ def test_bundle_builds_without_network(tmp_path):
         names = zf.namelist()
     prefix = f'jmeter-report-{version.__version__}-offline/'
     assert prefix + 'convert.py' in names
+    assert prefix + 'jmeter_reporter/convert.py' in names
     assert prefix + 'INSTALL.txt' in names
     assert prefix + 'wheels/SHA256SUMS' in names
 
 
-@pytest.mark.parametrize('module', sorted(APP_MODULES))
+@pytest.mark.parametrize('module', APP_MODULES + sorted(LAUNCHERS))
 def test_runtime_modules_do_not_use_network(module):
     tree = ast.parse((ROOT / module).read_text(encoding='utf-8'))
     banned = {'socket', 'urllib', 'http', 'requests', 'ftplib', 'smtplib', 'ssl', 'telnetlib'}

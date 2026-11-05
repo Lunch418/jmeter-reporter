@@ -1,8 +1,8 @@
 import pytest
 from openpyxl import load_workbook
 
-import convert
-import verify
+from jmeter_reporter import convert
+from jmeter_reporter import verify
 
 
 def _stats(sample_jtl):

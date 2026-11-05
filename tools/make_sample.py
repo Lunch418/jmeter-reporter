@@ -17,7 +17,7 @@ from collections import defaultdict
 from xml.sax.saxutils import escape
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import convert  # noqa: E402
+from jmeter_reporter import convert  # noqa: E402
 
 HEADER = ['timeStamp', 'elapsed', 'label', 'responseCode', 'responseMessage',
           'threadName', 'dataType', 'success', 'failureMessage', 'bytes',

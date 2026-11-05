@@ -1,9 +1,9 @@
 import pytest
 from openpyxl import load_workbook
 
-import compare
-import convert
-import stats
+from jmeter_reporter import compare
+from jmeter_reporter import convert
+from jmeter_reporter import stats
 
 
 def run_of(make_run, avg, name, err=0, extra=()):

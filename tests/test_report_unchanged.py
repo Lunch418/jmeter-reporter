@@ -4,7 +4,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-import convert
+from jmeter_reporter import convert
 
 SAMPLES = Path(__file__).resolve().parent.parent / 'samples'
 # sha256 over sheet names, chart counts, every cell value and number format of the report
@@ -34,7 +34,7 @@ def test_excel_report_is_unchanged(tmp_path):
 
 
 def test_extras_do_not_touch_the_report(tmp_path):
-    import workflow
+    from jmeter_reporter import workflow
     out = tmp_path / 'r.xlsx'
     convert.create_excel_report(str(SAMPLES / 'jmeter.jtl'), str(out))
     before = out.read_bytes()

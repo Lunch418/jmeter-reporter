@@ -1,5 +1,5 @@
 """Comparison of two runs: what got better or worse between a baseline and a new run."""
-import convert
+from . import convert
 
 DEFAULT_TOLERANCE_PCT = 10.0
 ERROR_TOLERANCE_PP = 0.01  # error rate may rise by this many percentage points at most

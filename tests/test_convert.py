@@ -4,7 +4,7 @@ import datetime as dt
 import pytest
 from openpyxl import load_workbook
 
-import convert
+from jmeter_reporter import convert
 
 
 # ---------------------------------------------------------- statistics ----
@@ -214,29 +214,39 @@ def test_cli_xml_options(sample_jtl, tmp_path):
 
 
 def test_cli_missing_xml_exits(sample_jtl, tmp_path):
-    with pytest.raises(SystemExit):
+    with pytest.raises(convert.ReportError):
         convert.parse_args([str(sample_jtl), 'o.xlsx', '--standard', str(tmp_path / 'no.xml')])
 
 
 def test_cli_option_without_value_exits(sample_jtl):
-    with pytest.raises(SystemExit):
+    with pytest.raises(convert.ReportError):
         convert.parse_args([str(sample_jtl), 'o.xlsx', '--tz'])
 
 
 def test_cli_missing_file_exits(tmp_path):
-    with pytest.raises(SystemExit):
+    with pytest.raises(convert.ReportError):
         convert.parse_args([str(tmp_path / 'nope.jtl'), 'o.xlsx'])
 
 
 def test_cli_wrong_arg_count_exits():
-    with pytest.raises(SystemExit):
+    with pytest.raises(convert.ReportError):
         convert.parse_args(['only-one'])
 
 
-def test_cli_help_exits_zero():
-    with pytest.raises(SystemExit) as exc:
-        convert.parse_args(['--help'])
-    assert exc.value.code == 0
+def test_cli_help_returns_zero(capsys):
+    assert convert.main(['--help']) == 0
+    assert 'Использование' in capsys.readouterr().out
+
+
+def test_cli_input_error_returns_exit_code_2(tmp_path, capsys):
+    assert convert.main([str(tmp_path / 'nope.jtl'), 'o.xlsx']) == 2
+    assert 'не найден' in capsys.readouterr().err
+
+
+def test_parse_args_never_calls_sys_exit(tmp_path):
+    for argv in (['only-one'], ['x.jtl', 'o.xlsx', '--tz'], ['--help-me-not']):
+        with pytest.raises(convert.ReportError):
+            convert.parse_args(argv)
 
 
 # ------------------------------------------------------------ report.toml ----
@@ -267,7 +277,7 @@ def test_explicit_config_option(sample_jtl, tmp_path):
 def test_broken_config_stops_the_cli(sample_jtl, tmp_path):
     cfg = tmp_path / 'bad.toml'
     cfg.write_text('[report\n', encoding='utf-8')
-    with pytest.raises(SystemExit):
+    with pytest.raises(convert.ReportError):
         convert.parse_args([str(sample_jtl), 'o.xlsx', '--config', str(cfg)])
 
 

@@ -1,8 +1,8 @@
 import pytest
 
-import config
-import convert
-import workflow
+from jmeter_reporter import config
+from jmeter_reporter import convert
+from jmeter_reporter import workflow
 
 
 def cfg_with(tmp_path, text):

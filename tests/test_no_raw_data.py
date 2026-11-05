@@ -1,8 +1,8 @@
 import pytest
 from openpyxl import load_workbook
 
-import config
-import convert
+from jmeter_reporter import config
+from jmeter_reporter import convert
 
 
 def build(jtl, out, **kw):
@@ -112,8 +112,6 @@ def test_main_with_no_raw_data(sample_jtl, tmp_path, monkeypatch, capsys):
 
 
 def test_version_flag(capsys):
-    import version
-    with pytest.raises(SystemExit) as exc:
-        convert.parse_args(['--version'])
-    assert exc.value.code == 0
+    from jmeter_reporter import version
+    assert convert.main(['--version']) == 0
     assert version.__version__ in capsys.readouterr().out

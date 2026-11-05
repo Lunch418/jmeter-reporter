@@ -25,7 +25,7 @@ r"""report.toml: defaults for time zone, steps, SLA limits, comparison and expor
 import os
 import sys
 
-import convert
+from .errors import ReportError
 
 # TOML parser: stdlib on Python 3.11+, the 'tomli' package if installed, otherwise our own
 # small parser (minitoml.py, enough for report.toml). So nothing has to be installed.
@@ -35,7 +35,7 @@ except ImportError:
     try:
         import tomli as tomllib
     except ImportError:
-        import minitoml as tomllib
+        from . import minitoml as tomllib
 
 CONFIG_NAME = 'report.toml'
 EXPORT_FORMATS = ('html', 'csv')
@@ -70,18 +70,18 @@ def find_config(*folders):
 
 
 def load_config(path):
-    """Parse and validate a config file. Raises convert.ReportError with a clear message."""
+    """Parse and validate a config file. Raises ReportError with a clear message."""
     try:
         with open(path, 'rb') as f:
             data = tomllib.load(f)
     except OSError as exc:
-        raise convert.ReportError(f"Не удалось прочитать конфиг '{path}': {exc}")
+        raise ReportError(f"Не удалось прочитать конфиг '{path}': {exc}")
     except tomllib.TOMLDecodeError as exc:
-        raise convert.ReportError(f"Ошибка в конфиге '{path}': {exc}")
+        raise ReportError(f"Ошибка в конфиге '{path}': {exc}")
 
     unknown = set(data) - SECTIONS
     if unknown:
-        raise convert.ReportError(
+        raise ReportError(
             f"В конфиге '{path}' неизвестные разделы: {', '.join(sorted(unknown))}. "
             f"Допустимы: {', '.join(sorted(SECTIONS))}.")
 
@@ -91,20 +91,20 @@ def load_config(path):
     report = _table(data, 'report', path)
     bad = set(report) - REPORT_KEYS
     if bad:
-        raise convert.ReportError(
+        raise ReportError(
             f"[report] в '{path}': неизвестные ключи {', '.join(sorted(bad))}. "
             f"Допустимы: {', '.join(sorted(REPORT_KEYS))}.")
     for key in REPORT_KEYS - {'include_raw_data', 'keep_history'}:
         if key in report and not isinstance(report[key], str):
-            raise convert.ReportError(f"[report] {key} в '{path}' должен быть строкой.")
+            raise ReportError(f"[report] {key} в '{path}' должен быть строкой.")
     if 'include_raw_data' in report:
         if not isinstance(report['include_raw_data'], bool):
-            raise convert.ReportError(
+            raise ReportError(
                 f"[report] include_raw_data в '{path}' должен быть true или false.")
         cfg.include_raw_data = report['include_raw_data']
     if 'keep_history' in report:
         if not isinstance(report['keep_history'], bool):
-            raise convert.ReportError(f"[report] keep_history в '{path}' должен быть true или false.")
+            raise ReportError(f"[report] keep_history в '{path}' должен быть true или false.")
         cfg.keep_history = report['keep_history']
     cfg.timezone = report.get('timezone')
     cfg.steps = report.get('steps')
@@ -113,7 +113,7 @@ def load_config(path):
     compare = _table(data, 'compare', path)
     bad = set(compare) - {'tolerance_pct'}
     if bad:
-        raise convert.ReportError(
+        raise ReportError(
             f"[compare] в '{path}': неизвестные ключи {', '.join(sorted(bad))}.")
     if 'tolerance_pct' in compare:
         cfg.tolerance_pct = _positive(compare['tolerance_pct'], 'compare.tolerance_pct', path)
@@ -121,16 +121,16 @@ def load_config(path):
     export = _table(data, 'export', path)
     bad = set(export) - {'formats'}
     if bad:
-        raise convert.ReportError(
+        raise ReportError(
             f"[export] в '{path}': неизвестные ключи {', '.join(sorted(bad))}.")
     formats = export.get('formats', [])
     if not isinstance(formats, list) or any(f not in EXPORT_FORMATS for f in formats):
-        raise convert.ReportError(
+        raise ReportError(
             f"[export] formats в '{path}': допустимы значения {', '.join(EXPORT_FORMATS)}.")
     cfg.exports = list(dict.fromkeys(formats))
 
     if 'sla' in data:
-        import sla
+        from . import sla
         cfg.sla = sla.normalize(_table(data, 'sla', path), path)
     return cfg
 
@@ -138,13 +138,13 @@ def load_config(path):
 def _table(data, name, path):
     value = data.get(name, {})
     if not isinstance(value, dict):
-        raise convert.ReportError(f"[{name}] в '{path}' должен быть таблицей.")
+        raise ReportError(f"[{name}] в '{path}' должен быть таблицей.")
     return value
 
 
 def _positive(value, name, path):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
-        raise convert.ReportError(f"{name} в '{path}' должен быть положительным числом.")
+        raise ReportError(f"{name} в '{path}' должен быть положительным числом.")
     return float(value)
 
 
@@ -152,7 +152,7 @@ def load_for(explicit, *folders):
     """Explicit --config path wins; otherwise report.toml from the first folder that has one."""
     if explicit:
         if not os.path.isfile(explicit):
-            raise convert.ReportError(f"Конфиг не найден: '{explicit}'")
+            raise ReportError(f"Конфиг не найден: '{explicit}'")
         return load_config(explicit)
     found = find_config(*folders)
     return load_config(found) if found else None
@@ -162,6 +162,6 @@ if __name__ == '__main__':  # python3 config.py [file]: validate a config
     target = sys.argv[1] if len(sys.argv) > 1 else CONFIG_NAME
     try:
         cfg = load_config(target)
-    except convert.ReportError as exc:
+    except ReportError as exc:
         sys.exit(str(exc))
     print(f"{target}: OK")

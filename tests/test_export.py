@@ -2,10 +2,10 @@ import csv
 
 import pytest
 
-import convert
-import export
-import sla
-import stats
+from jmeter_reporter import convert
+from jmeter_reporter import export
+from jmeter_reporter import sla
+from jmeter_reporter import stats
 
 
 def test_csv_contents(sample_jtl, tmp_path):

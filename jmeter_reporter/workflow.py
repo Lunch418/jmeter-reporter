@@ -1,11 +1,11 @@
 """Everything that goes next to the Excel report: SLA verdict, comparison, HTML/CSV."""
 import os
 
-import compare
-import convert
-import export
-import sla
-import stats
+from . import compare
+from . import convert
+from . import export
+from . import sla
+from . import stats
 
 
 def extra_paths(output):
@@ -15,11 +15,12 @@ def extra_paths(output):
 
 
 def run_extras(jtl, output, cfg=None, tz=None, steps=convert.DEFAULT_STEP_PATTERN,
-               baseline=None, exports=None, tolerance=None):
+               baseline=None, exports=None, tolerance=None, run=None):
     """Compute the optional outputs. The Excel report itself is built by convert.py.
 
     Returns {'verdict': sla.Verdict|None, 'comparison': compare.Comparison|None,
-             'files': [paths]}. Raises convert.ReportError on bad input or bad config.
+             'files': [paths]}. Raises ReportError on bad input or bad config.
+    `run` is an already loaded stats.Run of `jtl` (saves one pass over the file).
     """
     result = {'verdict': None, 'comparison': None, 'files': []}
     wanted = list(exports) if exports is not None else (list(cfg.exports) if cfg else [])
@@ -28,7 +29,8 @@ def run_extras(jtl, output, cfg=None, tz=None, steps=convert.DEFAULT_STEP_PATTER
         return result
 
     paths = extra_paths(output)
-    run = stats.load_run(jtl)
+    if run is None:  # pass the Run from create_excel_report to avoid re-reading a big file
+        run = stats.load_run(jtl)
     if sla_cfg:
         result['verdict'] = sla.evaluate(run, sla_cfg, steps)
     if baseline:

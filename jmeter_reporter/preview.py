@@ -7,7 +7,7 @@ from rich.console import Group
 from rich.table import Table
 from rich.text import Text
 
-import convert
+from . import convert
 
 PREVIEW_ROW_LIMIT = 100_000
 MAX_TABLE_ROWS = 14
@@ -109,7 +109,7 @@ def render_summary(info, accent='#d97757', dim='#8b8b8b', ok='#6fbf73', err='#e0
 
 def summarize_xml(path, error_cls=convert.ReportError):
     """Сколько меток внутри standardResults.xml / dashBoard_jmeter.xml."""
-    import verify
+    from . import verify
     name = os.path.basename(str(path))
     parser = verify.parse_dashboard if 'dash' in name.lower() else verify.parse_standard_results
     data = parser(str(path), error_cls)

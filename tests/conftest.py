@@ -39,7 +39,7 @@ def slow_jtl(tmp_path):
 @pytest.fixture
 def make_run(tmp_path):
     """Фабрика: JTL из списка (label, elapsed, success) -> stats.Run."""
-    import stats
+    from jmeter_reporter import stats
 
     def build(samples, name='run.jtl'):
         path = tmp_path / name

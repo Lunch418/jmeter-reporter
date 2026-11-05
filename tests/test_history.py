@@ -1,9 +1,9 @@
 """History: the old report is archived, never silently lost; the journal is readable."""
 import os
 
-import config
-import convert
-import history
+from jmeter_reporter import config
+from jmeter_reporter import convert
+from jmeter_reporter import history
 
 
 def _touch(path, text='x', mtime=1_700_000_000):

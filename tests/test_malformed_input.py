@@ -1,11 +1,12 @@
 """Bad input must give a clear error or a warning, never silent garbage or a traceback."""
 import pytest
 
-import compare
-import convert
-import export
-import sla
-import stats
+from jmeter_reporter import compare
+from jmeter_reporter import convert
+from jmeter_reporter import export
+from jmeter_reporter import jtl as jtl_module
+from jmeter_reporter import sla
+from jmeter_reporter import stats
 
 HEADER = 'timeStamp,elapsed,label,responseCode,success,bytes\n'
 
@@ -148,7 +149,7 @@ def test_cp1251_file_gives_a_clear_error_not_mojibake(tmp_path):
 
 def test_cp1251_works_when_declared(tmp_path, monkeypatch):
     jtl = write(tmp_path, '1700000000000,10,Главная,200,true,5\n', encoding='cp1251')
-    monkeypatch.setattr(convert, 'JTL_ENCODING', 'cp1251')
+    monkeypatch.setattr(jtl_module, 'JTL_ENCODING', 'cp1251')
     assert 'Главная' in stats.load_run(jtl).labels
 
 

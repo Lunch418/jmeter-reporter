@@ -2,8 +2,8 @@ from collections import defaultdict
 
 import pytest
 
-import convert
-import stats
+from jmeter_reporter import convert
+from jmeter_reporter import stats
 
 
 def test_streaming_matches_report_formulas(sample_jtl):
