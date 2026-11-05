@@ -9,6 +9,8 @@ r"""report.toml: defaults for time zone, steps, SLA limits, comparison and expor
 
     [compare]
     tolerance_pct = 10             # change of avg / p90 above this is a regression
+    min_abs_delta_ms = 10          # ...but only if it is at least this many ms (noise guard)
+    min_samples = 5                # labels with fewer samples are never flagged
 
     [export]
     formats = ["html", "csv"]      # extra outputs next to the Excel report
@@ -52,6 +54,8 @@ class Config:
         self.include_raw_data = True
         self.keep_history = True
         self.tolerance_pct = 10.0
+        self.min_abs_delta_ms = 10.0
+        self.min_samples = 5
         self.exports = []
         self.sla = None  # normalized by sla.normalize, or None
 
@@ -111,12 +115,22 @@ def load_config(path):
     cfg.output_dir = report.get('output_dir')
 
     compare = _table(data, 'compare', path)
-    bad = set(compare) - {'tolerance_pct'}
+    bad = set(compare) - {'tolerance_pct', 'min_abs_delta_ms', 'min_samples'}
     if bad:
         raise ReportError(
             f"[compare] в '{path}': неизвестные ключи {', '.join(sorted(bad))}.")
     if 'tolerance_pct' in compare:
         cfg.tolerance_pct = _positive(compare['tolerance_pct'], 'compare.tolerance_pct', path)
+    if 'min_abs_delta_ms' in compare:
+        value = compare['min_abs_delta_ms']
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+            raise ReportError(f"compare.min_abs_delta_ms в '{path}' должен быть числом >= 0.")
+        cfg.min_abs_delta_ms = float(value)
+    if 'min_samples' in compare:
+        value = compare['min_samples']
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ReportError(f"compare.min_samples в '{path}' должен быть целым >= 1.")
+        cfg.min_samples = value
 
     export = _table(data, 'export', path)
     bad = set(export) - {'formats'}

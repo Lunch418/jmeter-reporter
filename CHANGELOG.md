@@ -3,11 +3,12 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
-## [Unreleased]
+## [1.2.0] - 2026-11-05
 
 ### Fixed
 - Median and percentiles round half UP like JMeter's `Math.round` (Python's `round` is
-  banker's: on 5 or 9 samples the median was one element too low).
+  banker's: on 5 or 9 samples the median was one element too low). Reports of runs with such
+  sample counts change; the numbers now match JMeter.
 - Formula injection: labels and response text starting with `= + - @` stay text in Excel
   and get a `'` prefix in CSV exports.
 - A broken JTL no longer yields silent zeros: non-numeric `timeStamp`/`elapsed` is an error
@@ -16,6 +17,24 @@ The Excel report is covered by a golden test: it does not change between version
 - Encoding: no more silent replacement characters; non-UTF-8 files give a clear error,
   `JTL_ENCODING=cp1251` reads them.
 - SLA with `error_pct` on a JTL without the `success` column is refused instead of failing.
+- HTML summary shows the exact error count instead of one recomputed from a percentage.
+
+### Changed
+- Code moved into the `jmeter_reporter` package (`python convert.py` etc. work as before;
+  `pip install .` now provides `jmeter-report`, `jmeter-report-cli`, `jmeter-report-tui`).
+- One statistics engine (`stats.py`) for the report, SLA, comparison and exports; it keeps a
+  histogram per label instead of every sample (memory depends on distinct values, not rows).
+  The raw-data pass streams the file instead of holding a list of rows.
+- `convert.py` returns exit code 2 on input errors (like `cli.py`); library code no longer
+  calls `sys.exit`.
+- Comparison ignores noise: `min_abs_delta_ms` (default 10) and `min_samples` (default 5).
+- Docker image: runs as a non-root user (use `--user "$(id -u):$(id -g)"`), base image pinned
+  by digest, dependencies installed from `requirements.lock` with hashes.
+- CI: actions pinned by SHA, read-only token, Python 3.9/3.12/3.13 plus a core-only 3.8 job,
+  coverage gate 90%, Dependabot.
+
+### Added
+- Property-based tests (hypothesis) for the formulas; tests for malformed JTL files.
 
 ## [1.1.0] - 2026-11-05
 

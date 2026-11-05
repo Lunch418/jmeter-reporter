@@ -166,3 +166,38 @@ def test_compare_csv_escapes_formula(tmp_path):
     path = tmp_path / 'c.csv'
     compare.write_comparison_csv(cmp, str(path))
     assert "'=HYPERLINK" in path.read_text(encoding='utf-8-sig')
+
+
+# ---- comparison noise guards ----------------------------------------------------
+
+def _run(tmp_path, name, elapsed, n=10):
+    body = ''.join(f'{1700000000000 + i * 1000},{elapsed},01. A,200,true,5\n' for i in range(n))
+    return stats.load_run(write(tmp_path, body, name=name))
+
+
+def test_tiny_absolute_change_is_not_a_regression(tmp_path):
+    base, new = _run(tmp_path, 'a.jtl', 2), _run(tmp_path, 'b.jtl', 3)   # +50%, but 1 ms
+    assert not compare.compare_runs(base, new).has_regressions
+    strict = compare.compare_runs(base, new, min_abs_ms=0)
+    assert strict.has_regressions
+
+
+def test_zero_baseline_needs_an_absolute_change(tmp_path):
+    base, new = _run(tmp_path, 'a.jtl', 0), _run(tmp_path, 'b.jtl', 4)
+    assert not compare.compare_runs(base, new).has_regressions
+    new = _run(tmp_path, 'c.jtl', 400)
+    assert compare.compare_runs(base, new).has_regressions
+
+
+def test_few_samples_are_not_flagged(tmp_path):
+    base, new = _run(tmp_path, 'a.jtl', 100, n=2), _run(tmp_path, 'b.jtl', 900, n=2)
+    row = compare.compare_runs(base, new, step_pattern='^01').rows[0]
+    assert row['status'] == 'same' and row['low_samples']
+
+
+def test_html_uses_exact_error_count(tmp_path):
+    body = ''.join(f'{1700000000000 + i},10,A,200,{"false" if i < 3 else "true"},5\n'
+                   for i in range(7))
+    run = stats.load_run(write(tmp_path, body))
+    page = export.render_html(run)
+    assert run.errors == 3 and '>3<' in page.replace(' ', '')

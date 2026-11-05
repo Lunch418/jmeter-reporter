@@ -3,6 +3,10 @@ from . import convert
 
 DEFAULT_TOLERANCE_PCT = 10.0
 ERROR_TOLERANCE_PP = 0.01  # error rate may rise by this many percentage points at most
+# Noise guards: a change must be big in percent AND in milliseconds, and based on enough samples.
+# 2 ms -> 3 ms is +50% but not a regression anybody can act on.
+DEFAULT_MIN_ABS_MS = 10
+DEFAULT_MIN_SAMPLES = 5
 
 
 def _delta(base, new):
@@ -12,10 +16,12 @@ def _delta(base, new):
     return (new - base) / base * 100.0
 
 
-def _status(base, new, tolerance):
+def _status(base, new, tolerance, min_abs_ms=0):
     """regression / improvement / same for a time metric."""
+    if abs(new - base) < min_abs_ms:
+        return 'same'
     delta = _delta(base, new)
-    if delta is None:
+    if delta is None:  # the baseline is 0 ms: any change that passed the absolute guard counts
         return 'same' if new == 0 else 'regression'
     if delta > tolerance:
         return 'regression'
@@ -25,7 +31,10 @@ def _status(base, new, tolerance):
 
 
 class Comparison:
-    def __init__(self, base, new, tolerance, rows, only_base, only_new):
+    def __init__(self, base, new, tolerance, rows, only_base, only_new,
+                 min_abs_ms=0, min_samples=1):
+        self.min_abs_ms = min_abs_ms
+        self.min_samples = min_samples
         self.base = base
         self.new = new
         self.tolerance = tolerance
@@ -46,15 +55,18 @@ class Comparison:
 
 
 def compare_runs(base, new, step_pattern=convert.DEFAULT_STEP_PATTERN,
-                 tolerance=DEFAULT_TOLERANCE_PCT, steps_only=True):
+                 tolerance=DEFAULT_TOLERANCE_PCT, steps_only=True,
+                 min_abs_ms=DEFAULT_MIN_ABS_MS, min_samples=DEFAULT_MIN_SAMPLES):
     """Compare two stats.Run objects label by label (steps only by default) plus TOTAL.
 
     A row is a regression if avg or p90 grew by more than `tolerance` percent or the
     error rate grew; an improvement if avg or p90 fell by more than that and nothing
-    got worse; otherwise 'same'.
+    got worse; otherwise 'same'. Changes smaller than `min_abs_ms` milliseconds, and labels
+    with fewer than `min_samples` samples on either side, are never flagged (noise).
     """
-    if tolerance < 0:
-        raise convert.ReportError('Допуск сравнения не может быть отрицательным.')
+    if tolerance < 0 or min_abs_ms < 0 or min_samples < 1:
+        raise convert.ReportError('Допуск сравнения не может быть отрицательным, '
+                                  'а min_samples должен быть не меньше 1.')
     wanted = new.steps(step_pattern) if steps_only else list(new.labels)
     # Labels are matched without spaces at the edges, like in the XML cross-check.
     base_by_label = {label.strip(): s for label, s in base.labels.items()}
@@ -66,18 +78,19 @@ def compare_runs(base, new, step_pattern=convert.DEFAULT_STEP_PATTERN,
         if stats_base is None:
             only_new.append(label)
             continue
-        rows.append(_row(label, stats_base, stats_new, tolerance))
+        rows.append(_row(label, stats_base, stats_new, tolerance, min_abs_ms, min_samples))
     new_labels = {label.strip() for label in new.labels}
     base_candidates = base.steps(step_pattern) if steps_only else list(base.labels)
     only_base = [label for label in base_candidates if label.strip() not in new_labels]
-    rows.append(_row('TOTAL', base.total, new.total, tolerance))
-    return Comparison(base, new, tolerance, rows, only_base, only_new)
+    rows.append(_row('TOTAL', base.total, new.total, tolerance, min_abs_ms, min_samples))
+    return Comparison(base, new, tolerance, rows, only_base, only_new, min_abs_ms, min_samples)
 
 
-def _row(label, base, new, tolerance):
-    avg_status = _status(base['avg'], new['avg'], tolerance)
-    p90_status = _status(base['p90'], new['p90'], tolerance)
-    errors_up = new['error_pct'] - base['error_pct'] > ERROR_TOLERANCE_PP
+def _row(label, base, new, tolerance, min_abs_ms=0, min_samples=1):
+    enough = base['samples'] >= min_samples and new['samples'] >= min_samples
+    avg_status = _status(base['avg'], new['avg'], tolerance, min_abs_ms) if enough else 'same'
+    p90_status = _status(base['p90'], new['p90'], tolerance, min_abs_ms) if enough else 'same'
+    errors_up = enough and new['error_pct'] - base['error_pct'] > ERROR_TOLERANCE_PP
     statuses = {avg_status, p90_status}
     if 'regression' in statuses or errors_up:
         status = 'regression'
@@ -93,6 +106,7 @@ def _row(label, base, new, tolerance):
         'p90_delta': _delta(base['p90'], new['p90']),
         'err_base': base['error_pct'], 'err_new': new['error_pct'],
         'samples_base': base['samples'], 'samples_new': new['samples'],
+        'low_samples': not enough,
     }
 
 

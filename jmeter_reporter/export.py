@@ -57,7 +57,7 @@ def render_html(run, tz=None, step_pattern=None, verdict=None, title='Отчет
     start = convert.format_timestamp(run.first_ts, tz)
     end = convert.format_timestamp(run.last_ts, tz)
     tz_label = convert.timezone_label(run.first_ts, tz)
-    errors = round(run.total['error_pct'] * run.rows / 100)
+    errors = run.errors
 
     rows = _rows(run, step_pattern)
     peak = max((s['avg'] for s in rows[:-1]), default=0) or 1

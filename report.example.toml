@@ -9,6 +9,8 @@ steps = '^\d{2}\.'              # labels like "01. Login" are steps
 
 [compare]
 tolerance_pct = 10              # avg / p90 change above this is a regression
+min_abs_delta_ms = 10           # ...and at least this many ms (noise guard)
+min_samples = 5                 # labels with fewer samples are never flagged
 
 [export]
 formats = ["html"]              # extra files next to the Excel report: html, csv

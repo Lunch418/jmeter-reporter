@@ -37,7 +37,10 @@ def run_extras(jtl, output, cfg=None, tz=None, steps=convert.DEFAULT_STEP_PATTER
         base = stats.load_run(baseline)
         tol = tolerance if tolerance is not None else (
             cfg.tolerance_pct if cfg else compare.DEFAULT_TOLERANCE_PCT)
-        cmp = compare.compare_runs(base, run, steps, tol)
+        cmp = compare.compare_runs(
+            base, run, steps, tol,
+            min_abs_ms=cfg.min_abs_delta_ms if cfg else compare.DEFAULT_MIN_ABS_MS,
+            min_samples=cfg.min_samples if cfg else compare.DEFAULT_MIN_SAMPLES)
         written = compare.write_comparison(cmp, paths['compare'])
         result['comparison'] = cmp
         result['files'].append(written)

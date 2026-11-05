@@ -21,7 +21,7 @@ RUN chmod +x docker-entrypoint.sh
 
 # ---- test: runtime + pytest, `docker build --target test .` runs the suite ----
 FROM base AS test
-COPY requirements-dev.txt .
+COPY requirements.txt requirements-tui.txt requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 COPY README.md CHANGELOG.md ./
 COPY docs/ docs/

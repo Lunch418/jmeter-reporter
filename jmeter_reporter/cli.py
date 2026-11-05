@@ -51,8 +51,13 @@ def cmd_compare(args):
         cfg.tolerance_pct if cfg else compare.DEFAULT_TOLERANCE_PCT)
     base = stats.load_run(args.base)
     new = stats.load_run(args.new)
+    min_abs = args.min_abs_ms if args.min_abs_ms is not None else (
+        cfg.min_abs_delta_ms if cfg else compare.DEFAULT_MIN_ABS_MS)
+    min_samples = args.min_samples if args.min_samples is not None else (
+        cfg.min_samples if cfg else compare.DEFAULT_MIN_SAMPLES)
     cmp = compare.compare_runs(base, new, _steps(args, cfg), tolerance,
-                               steps_only=not args.all_labels)
+                               steps_only=not args.all_labels,
+                               min_abs_ms=min_abs, min_samples=min_samples)
     out = args.output or workflow.extra_paths(args.new)['compare']
     written = compare.write_comparison(cmp, out)
     print(compare.format_comparison(cmp))
@@ -104,6 +109,10 @@ def build_parser():
     p.add_argument('-o', '--output',
                    help='куда сохранить .xlsx или .csv (по умолчанию .xlsx рядом с новым)')
     p.add_argument('--tolerance', type=float, help='допуск в процентах (по умолчанию 10)')
+    p.add_argument('--min-abs-ms', type=float,
+                   help='не считать изменением сдвиг меньше стольких мс (по умолчанию 10)')
+    p.add_argument('--min-samples', type=int,
+                   help='не сравнивать метки, где замеров меньше (по умолчанию 5)')
     p.add_argument('--all-labels', action='store_true', help='сравнивать все метки, не только шаги')
     p.add_argument('--fail-on-regression', action='store_true',
                    help='код выхода 1, если есть ухудшения')

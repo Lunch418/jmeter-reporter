@@ -65,7 +65,7 @@ docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD:/data" jmeter
 
 ## Route 3 - no packages at all
 
-Copy the `*.py` files and use only the stdlib commands from the table above. The Excel report
+Copy the `jmeter_reporter/` folder and the three launchers (`cli.py`, `convert.py`, `tui.py`) and use only the stdlib commands from the table above. The Excel report
 is the one thing you give up; use `export --format html` instead.
 
 ## Supported Python versions

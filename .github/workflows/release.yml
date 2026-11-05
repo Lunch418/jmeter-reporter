@@ -11,8 +11,8 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
       - run: pip install -r requirements-dev.txt
@@ -20,7 +20,7 @@ jobs:
       - run: python -m pytest -q
       - name: Tag must match version.py
         run: |
-          v=$(python -c "import version; print(version.__version__)")
+          v=$(python -c "from jmeter_reporter import version; print(version.__version__)")
           test "v$v" = "${GITHUB_REF_NAME}"
       - name: Build offline bundle
         run: python tools/make_offline_bundle.py --with-tui

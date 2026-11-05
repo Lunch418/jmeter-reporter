@@ -6,6 +6,13 @@ from jmeter_reporter import convert
 from jmeter_reporter import stats
 
 
+def _cmp(base, new, *args, **kwargs):
+    # These tests are about the percent logic: the noise guards are tested separately.
+    kwargs.setdefault('min_abs_ms', 0)
+    kwargs.setdefault('min_samples', 1)
+    return compare.compare_runs(base, new, *args, **kwargs)
+
+
 def run_of(make_run, avg, name, err=0, extra=()):
     n = 10
     samples = [('01. Step', avg, i >= err) for i in range(n)] + list(extra)
@@ -14,7 +21,7 @@ def run_of(make_run, avg, name, err=0, extra=()):
 
 def test_identical_runs_are_same(sample_jtl):
     run = stats.load_run(sample_jtl)
-    cmp = compare.compare_runs(run, run)
+    cmp = _cmp(run, run)
     assert not cmp.has_regressions and cmp.count('same') == len(cmp.rows)
     assert cmp.only_base == [] and cmp.only_new == []
     assert cmp.rows[-1]['label'] == 'TOTAL'
@@ -23,7 +30,7 @@ def test_identical_runs_are_same(sample_jtl):
 def test_regression_and_improvement(make_run):
     base = make_run([('01. A', 100, True), ('02. B', 100, True)], 'b.jtl')
     new = make_run([('01. A', 150, True), ('02. B', 50, True)], 'n.jtl')
-    cmp = compare.compare_runs(base, new)
+    cmp = _cmp(base, new)
     by = {r['label']: r for r in cmp.rows}
     assert by['01. A']['status'] == 'regression'
     assert by['01. A']['avg_delta'] == pytest.approx(50)
@@ -35,21 +42,21 @@ def test_regression_and_improvement(make_run):
 def test_tolerance_decides(make_run):
     base = make_run([('01. A', 100, True)], 'b.jtl')
     new = make_run([('01. A', 108, True)], 'n.jtl')
-    assert compare.compare_runs(base, new, tolerance=10).rows[0]['status'] == 'same'
-    assert compare.compare_runs(base, new, tolerance=5).rows[0]['status'] == 'regression'
+    assert _cmp(base, new, tolerance=10).rows[0]['status'] == 'same'
+    assert _cmp(base, new, tolerance=5).rows[0]['status'] == 'regression'
 
 
 def test_error_rate_growth_is_a_regression(make_run):
     base = make_run([('01. A', 100, True)] * 4, 'b.jtl')
     new = make_run([('01. A', 100, True)] * 3 + [('01. A', 100, False)], 'n.jtl')
-    row = compare.compare_runs(base, new).rows[0]
+    row = _cmp(base, new).rows[0]
     assert row['status'] == 'regression' and row['avg_delta'] == 0
 
 
 def test_zero_baseline(make_run):
     base = make_run([('01. A', 0, True)], 'b.jtl')
-    assert compare.compare_runs(base, make_run([('01. A', 0, True)], 'n.jtl')).rows[0]['status'] == 'same'
-    row = compare.compare_runs(base, make_run([('01. A', 5, True)], 'n2.jtl')).rows[0]
+    assert _cmp(base, make_run([('01. A', 0, True)], 'n.jtl')).rows[0]['status'] == 'same'
+    row = _cmp(base, make_run([('01. A', 5, True)], 'n2.jtl')).rows[0]
     assert row['status'] == 'regression' and row['avg_delta'] is None
     assert compare.format_delta(None) == 'n/a'
 
@@ -57,7 +64,7 @@ def test_zero_baseline(make_run):
 def test_labels_only_on_one_side(make_run):
     base = make_run([('01. A', 10, True), ('02. Old', 10, True)], 'b.jtl')
     new = make_run([('01. A', 10, True), ('03. New', 10, True)], 'n.jtl')
-    cmp = compare.compare_runs(base, new)
+    cmp = _cmp(base, new)
     assert cmp.only_new == ['03. New'] and cmp.only_base == ['02. Old']
     assert [r['label'] for r in cmp.rows] == ['01. A', 'TOTAL']
 
@@ -65,26 +72,26 @@ def test_labels_only_on_one_side(make_run):
 def test_labels_match_ignoring_edge_spaces(make_run):
     base = make_run([('01. A ', 100, True)], 'b.jtl')
     new = make_run([('01. A', 100, True)], 'n.jtl')
-    assert compare.compare_runs(base, new).only_new == []
+    assert _cmp(base, new).only_new == []
 
 
 def test_all_labels_mode(make_run):
     base = make_run([('01. A', 10, True), ('sub', 10, True)], 'b.jtl')
     new = make_run([('01. A', 10, True), ('sub', 10, True)], 'n.jtl')
-    labels = [r['label'] for r in compare.compare_runs(base, new, steps_only=False).rows]
+    labels = [r['label'] for r in _cmp(base, new, steps_only=False).rows]
     assert labels == ['01. A', 'sub', 'TOTAL']
 
 
 def test_negative_tolerance_rejected(make_run):
     run = make_run([('01. A', 1, True)])
     with pytest.raises(convert.ReportError):
-        compare.compare_runs(run, run, tolerance=-1)
+        _cmp(run, run, tolerance=-1)
 
 
 def test_format_comparison(make_run):
     base = make_run([('01. A', 100, True)], 'b.jtl')
     new = make_run([('01. A', 200, True), ('02. X', 1, True)], 'n.jtl')
-    text = compare.format_comparison(compare.compare_runs(base, new))
+    text = compare.format_comparison(_cmp(base, new))
     assert 'хуже 2' in text and '01. A' in text and '+100.0%' in text
     assert 'только в новом' in text
 
@@ -93,7 +100,7 @@ def test_comparison_workbook(make_run, tmp_path):
     base = make_run([('01. A', 100, True), ('02. B', 100, True)], 'b.jtl')
     new = make_run([('01. A', 200, True), ('02. B', 10, True), ('03. C', 5, True)], 'n.jtl')
     out = tmp_path / 'cmp.xlsx'
-    compare.write_comparison_xlsx(compare.compare_runs(base, new), out)
+    compare.write_comparison_xlsx(_cmp(base, new), out)
     wb = load_workbook(out)
     assert wb.sheetnames == ['Сравнение']
     ws = wb['Сравнение']
@@ -111,4 +118,4 @@ def test_comparison_workbook(make_run, tmp_path):
 def test_comparison_write_error(make_run, tmp_path):
     run = make_run([('01. A', 1, True)])
     with pytest.raises(convert.ReportError, match='сохранить'):
-        compare.write_comparison_xlsx(compare.compare_runs(run, run), tmp_path / 'no' / 'x.xlsx')
+        compare.write_comparison_xlsx(_cmp(run, run), tmp_path / 'no' / 'x.xlsx')

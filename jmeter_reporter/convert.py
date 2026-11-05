@@ -29,6 +29,9 @@ LARGE_FILE_ROWS = 200_000
 # иначе openpyxl падает на большом JTL уже в момент сохранения.
 EXCEL_MAX_ROWS = 1_048_576
 
+# Оценка памяти листа 'Исходные данные' (измерено на 40 тысячах строк, 17 колонок).
+BYTES_PER_RAW_ROW = 8500
+
 # Шаги сценария по умолчанию: 'NN. Название'.
 DEFAULT_STEP_PATTERN = r'^\d{2}\.'
 
@@ -77,9 +80,12 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
     first_ts, last_ts = run.first_ts, run.last_ts
 
     if n_rows > LARGE_FILE_ROWS and include_raw_data:
-        warnings.append(f"большой файл ({n_rows} строк): отчет строится долго и требует "
-                        f"много памяти; можно отключить лист 'Исходные данные' (--no-raw-data), "
-                        f"а проверка SLA, сравнение и экспорт (cli.py) читают файл потоком")
+        # Измерено: лист 'Исходные данные' стоит около 8 КБ памяти на строку (ячейки openpyxl).
+        gb = n_rows * BYTES_PER_RAW_ROW / 1024 ** 3
+        warnings.append(f"большой файл ({n_rows} строк): лист 'Исходные данные' займет "
+                        f"около {gb:.1f} ГБ памяти и будет строиться долго. Отключите его: "
+                        f"--no-raw-data (остальные листы те же, памяти нужно в десятки раз "
+                        f"меньше). Проверка SLA, сравнение и экспорт (cli.py) читают файл потоком")
     if not has_success:
         warnings.append("в JTL нет колонки 'success' - все замеры будут учтены как ошибочные")
 

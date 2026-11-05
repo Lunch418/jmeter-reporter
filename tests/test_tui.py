@@ -1,4 +1,5 @@
 import asyncio
+import time
 from pathlib import Path
 
 import pytest
@@ -101,10 +102,7 @@ def test_build_report_end_to_end(tmp_path, sample_jtl):
             app.query_one('#output', Input).value = str(out)
             app.query_one('#tz-custom', Input).value = 'UTC'
             app.action_build()
-            for _ in range(100):
-                await pilot.pause(0.05)
-                if out.exists() and 'Готово' in log_text(app):
-                    break
+            await _finish_build(app, pilot)
             assert 'Готово' in log_text(app)
             assert 'UTC+00:00' in log_text(app)
 
@@ -162,10 +160,7 @@ def test_selecting_jtl_autodetects_xml_and_builds_with_check(tmp_path, sample_jt
             assert 'std +' in str(app.query_one('#standard-key', Static).render())
             app.query_one('#output', Input).value = str(out)
             app.action_build()
-            for _ in range(100):
-                await pilot.pause(0.05)
-                if 'Готово' in log_text(app):
-                    break
+            await _finish_build(app, pilot)
             assert 'совпали' in log_text(app)
 
     run(scenario())
@@ -209,6 +204,21 @@ def _preview_text(app):
     console = Console(width=140, record=True, file=open('/dev/null', 'w'))
     console.print(app.query_one('#preview', Static).content)
     return console.export_text()
+
+
+async def _finish_build(app, pilot):
+    """Wait until the build and preview workers are done (with a generous deadline, not a fixed number of sleeps).
+
+    The DirectoryTree's own '_loader' worker never ends, so wait_for_complete() cannot be used;
+    the app loop is kept running by short pauses instead.
+    """
+    from textual.worker import WorkerState
+    deadline = time.monotonic() + 60
+    while any(w.group in ('build', 'preview')
+              and w.state in (WorkerState.PENDING, WorkerState.RUNNING) for w in app.workers):
+        assert time.monotonic() < deadline, 'worker did not finish in 60 s'
+        await pilot.pause(0.02)
+    await pilot.pause()
 
 
 async def _wait_preview(pilot, app, needle):
@@ -390,10 +400,7 @@ def test_build_creates_missing_reports_folder(tmp_path, sample_jtl):
             app.query_one('#jtl', Input).value = str(sample_jtl)
             app.query_one('#output', Input).value = str(out)
             app.action_build()
-            for _ in range(100):
-                await pilot.pause(0.05)
-                if 'Готово' in log_text(app):
-                    break
+            await _finish_build(app, pilot)
             assert 'Готово' in log_text(app)
 
     run(scenario())
@@ -405,10 +412,7 @@ def test_build_creates_missing_reports_folder(tmp_path, sample_jtl):
 def _build_and_wait(app, pilot):
     async def go():
         app.action_build()
-        for _ in range(200):
-            await pilot.pause(0.05)
-            if 'Готово' in log_text(app) or 'Ошибка' in log_text(app):
-                break
+        await _finish_build(app, pilot)
         await pilot.pause()
     return go()
 
