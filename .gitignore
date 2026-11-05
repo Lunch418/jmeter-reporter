@@ -13,6 +13,7 @@ htmlcov/
 dashBoard_*.xml
 standardResults.xml
 !samples/*.jtl
+!samples/jmeter-5.6.3/*.jtl
 !samples/dashBoard_*.xml
 !samples/standardResults.xml
 

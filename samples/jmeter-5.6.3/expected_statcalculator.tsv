@@ -1,0 +1,7 @@
+label	samples	mean	median	p90	p95	p99	min	max
+01. Home page	5	282	73	1156	1156	1156	35	1156
+02. Login	7	58	58	64	84	84	35	84
+03. Search	9	58	62	75	80	80	30	80
+04. Open item	11	46	49	63	63	70	24	70
+05. Checkout	13	54	51	75	75	79	29	79
+TOTAL	45	79	56	79	84	1156	24	1156

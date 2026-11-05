@@ -15,6 +15,13 @@ The Excel report is covered by a golden test: it does not change between version
 - The 1.2.0 move into the `jmeter_reporter` package changed import paths; it should have been
   announced as breaking.
 
+### Added
+- `samples/jmeter-5.6.3/`: a reference run from a real JMeter 5.6.3 (odd sample counts) with
+  expected values produced by JMeter's own `StatCalculator` and its HTML dashboard;
+  `tests/test_jmeter_reference.py` checks all numbers against it. (The dashboard computes
+  p90/p95/p99 with interpolation, a different method from the Aggregate Report, so those
+  are checked against `StatCalculator` only.)
+
 ### Changed
 - The 'raw data' sheet is streamed straight into the .xlsx archive: 405 000 rows take about
   34 MB of memory instead of several GB. Cells look and read the same (golden test).
