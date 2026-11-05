@@ -445,6 +445,7 @@ def test_broken_config_is_reported_not_fatal(tmp_path, monkeypatch):
 
 def test_set_baseline_from_tree(tmp_path, sample_jtl, monkeypatch):
     monkeypatch.chdir(tmp_path)
+    (tmp_path / 'aaa').mkdir()  # folders are listed first: the cursor starts on a folder
 
     async def scenario():
         app = tui.ReportApp(tmp_path)
@@ -601,5 +602,120 @@ def test_output_dir_from_config(tmp_path, sample_jtl, monkeypatch):
             tree.post_message(tui.DirectoryTree.FileSelected(tree.root, sample_jtl))
             await pilot.pause()
             assert app.query_one('#output', Input).value == str(Path('out') / 'sample_report.xlsx')
+
+    run(scenario())
+
+
+# ---------------------------------------------- navigation keys (v5) ----
+
+def test_root_is_not_shown_so_it_cannot_be_collapsed(tmp_path):
+    (tmp_path / 'a.jtl').write_text('x')
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            tree = app.query_one(tui.FileTree)
+            assert tree.show_root is False and tree.root.is_expanded
+            assert _tree_names(app) == {'a.jtl'}
+
+    run(scenario())
+
+
+def test_ctrl_u_goes_up_from_an_input_and_does_not_clear_it(tmp_path):
+    child = tmp_path / 'child'
+    child.mkdir()
+
+    async def scenario():
+        app = tui.ReportApp(child)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one('#dir', Input).focus()
+            await pilot.pause()
+            await pilot.press('ctrl+u')
+            await pilot.pause()
+            assert app.start_dir == tmp_path.resolve()
+            assert app.query_one('#dir', Input).value == str(tmp_path.resolve())
+
+    run(scenario())
+
+
+def test_ctrl_u_from_the_jtl_prompt_keeps_the_prompt_text(tmp_path):
+    child = tmp_path / 'child'
+    child.mkdir()
+
+    async def scenario():
+        app = tui.ReportApp(child)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            prompt = app.query_one('#jtl', Input)
+            prompt.value = '/some/file.jtl'
+            prompt.focus()
+            await pilot.pause()
+            await pilot.press('ctrl+u')
+            await pilot.pause()
+            assert prompt.value == '/some/file.jtl'  # not wiped by the Input's own binding
+
+    run(scenario())
+
+
+def test_ctrl_f_toggles_filter_from_an_input(tmp_path):
+    (tmp_path / 'c.txt').write_text('x')
+
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one('#steps', Input).focus()
+            await pilot.pause()
+            await pilot.press('ctrl+f')
+            await pilot.pause()
+            await pilot.pause()
+            assert 'c.txt' in _tree_names(app)
+
+    run(scenario())
+
+
+def test_backspace_in_tree_goes_up(tmp_path):
+    child = tmp_path / 'child'
+    child.mkdir()
+
+    async def scenario():
+        app = tui.ReportApp(child)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.query_one(tui.FileTree).focus()
+            await pilot.pause()
+            await pilot.press('backspace')
+            await pilot.pause()
+            assert app.start_dir == tmp_path.resolve()
+
+    run(scenario())
+
+
+def test_up_at_filesystem_root_is_harmless():
+    async def scenario():
+        app = tui.ReportApp('/')
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app.action_folder_up()
+            await pilot.pause()
+            assert str(app.start_dir) == '/'
+
+    run(scenario())
+
+
+def test_emptied_folder_field_is_restored_on_enter(tmp_path):
+    async def scenario():
+        app = tui.ReportApp(tmp_path)
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            field = app.query_one('#dir', Input)
+            field.value = ''
+            field.focus()
+            await pilot.pause()
+            await pilot.press('enter')
+            await pilot.pause()
+            assert field.value == str(tmp_path.resolve())
 
     run(scenario())

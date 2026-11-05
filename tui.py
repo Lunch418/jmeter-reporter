@@ -14,6 +14,7 @@ from pathlib import Path
 from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.theme import Theme
 from textual.widgets import DirectoryTree, Input, RichLog, Select, Static
@@ -145,6 +146,9 @@ class FileTree(DirectoryTree):
     ICON_FILE = '  '
 
     extensions = FILE_TYPES['jmeter'][1]
+    show_root = False  # the opened folder is in the 'папка' field; list its contents directly
+
+    BINDINGS = [Binding('backspace', 'app.folder_up', 'выше', show=False)]
 
     def filter_paths(self, paths):
         result = []
@@ -159,14 +163,16 @@ class FileTree(DirectoryTree):
 
 class ReportApp(App):
     TITLE = 'JMeter -> Excel'
+    # priority=True: the keys work from any field. Without it a focused Input swallows
+    # Ctrl+U (clears the line), Ctrl+E / Ctrl+F / Ctrl+B (move the cursor).
     BINDINGS = [
-        ('ctrl+r', 'build', 'создать'),
-        ('ctrl+o', 'focus_files', 'файлы'),
-        ('ctrl+u', 'folder_up', 'папка выше'),
-        ('ctrl+b', 'open_folder', 'открыть папку'),
-        ('ctrl+f', 'toggle_filter', 'тип файлов'),
-        ('ctrl+e', 'set_baseline', 'эталон'),
-        ('ctrl+q', 'quit', 'выход'),
+        Binding('ctrl+r', 'build', 'создать', priority=True),
+        Binding('ctrl+o', 'focus_files', 'файлы', priority=True),
+        Binding('ctrl+u', 'folder_up', 'папка выше', priority=True),
+        Binding('ctrl+b', 'open_folder', 'открыть папку', priority=True),
+        Binding('ctrl+f', 'toggle_filter', 'тип файлов', priority=True),
+        Binding('ctrl+e', 'set_baseline', 'эталон', priority=True),
+        Binding('ctrl+q', 'quit', 'выход', priority=True),
     ]
     CSS = f"""
     Screen {{ background: $background; padding: 0 1; }}
@@ -267,7 +273,7 @@ class ReportApp(App):
                                           style=DIM), id='preview')
                 with Vertical(id='log-panel', classes='panel'):
                     yield RichLog(id='log', wrap=True, markup=True, highlight=False)
-        yield Static('ctrl+r создать   ctrl+o файлы   ctrl+u выше   ctrl+b открыть папку   '
+        yield Static('ctrl+r создать   ctrl+o файлы   ctrl+u/backspace выше   ctrl+b открыть папку   '
                      'ctrl+f тип   ctrl+e эталон   tab дальше   ctrl+q выход', id='hints')
 
     @staticmethod
@@ -353,6 +359,9 @@ class ReportApp(App):
 
     @on(Input.Submitted, '#dir')
     def _dir_submitted(self, event):
+        if not event.value.strip():  # an emptied field: put the current folder back
+            event.input.value = str(self.start_dir)
+            return
         self._set_root(event.value)
 
     @on(Input.Changed, '#output')
