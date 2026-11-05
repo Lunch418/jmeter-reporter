@@ -726,3 +726,13 @@ def test_emptied_folder_field_is_restored_on_enter(tmp_path):
             assert field.value == str(tmp_path.resolve())
 
     run(scenario())
+
+
+def test_demo_samples_folder_is_the_real_repo_folder(monkeypatch, tmp_path):
+    """The demo data must never get reports next to it. (A moved module once pointed
+    SAMPLES_DIR at a folder that does not exist, and the check silently stopped working.)"""
+    repo = Path(__file__).resolve().parent.parent
+    assert tui.SAMPLES_DIR == repo / 'samples' and tui.SAMPLES_DIR.is_dir()
+    monkeypatch.chdir(tmp_path)
+    out = tui.default_output_path(repo / 'samples' / 'jmeter.jtl')
+    assert out == tmp_path / 'reports' / 'jmeter_report.xlsx'

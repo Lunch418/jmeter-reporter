@@ -82,7 +82,7 @@ TIMEZONES = [
 ]
 
 
-SAMPLES_DIR = Path(__file__).resolve().parent / 'samples'
+SAMPLES_DIR = Path(__file__).resolve().parent.parent / 'samples'  # repo root, next to the package
 REPORTS_DIR_NAME = 'reports'
 
 
