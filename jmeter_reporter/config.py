@@ -5,6 +5,7 @@ r"""report.toml: defaults for time zone, steps, SLA limits, comparison and expor
     steps = '^\d{2}\.'             # regex of the labels treated as steps
     output_dir = "reports"         # where reports go when no path is given
     keep_history = true            # false: overwrite the old report, no history/ folder
+    history_keep = 30              # how many old copies to keep in history/ (oldest are deleted)
     include_raw_data = true        # false: no 'raw data' sheet (huge JTL, Excel row limit)
 
     [compare]
@@ -42,7 +43,8 @@ except ImportError:
 CONFIG_NAME = 'report.toml'
 EXPORT_FORMATS = ('html', 'csv')
 SECTIONS = {'report', 'compare', 'export', 'sla'}
-REPORT_KEYS = {'timezone', 'steps', 'output_dir', 'include_raw_data', 'keep_history'}
+REPORT_KEYS = {'timezone', 'steps', 'output_dir', 'include_raw_data', 'keep_history',
+               'history_keep'}
 
 
 class Config:
@@ -53,6 +55,7 @@ class Config:
         self.output_dir = None
         self.include_raw_data = True
         self.keep_history = True
+        self.history_keep = 30
         self.tolerance_pct = 10.0
         self.min_abs_delta_ms = 10.0
         self.min_samples = 5
@@ -98,7 +101,7 @@ def load_config(path):
         raise ReportError(
             f"[report] в '{path}': неизвестные ключи {', '.join(sorted(bad))}. "
             f"Допустимы: {', '.join(sorted(REPORT_KEYS))}.")
-    for key in REPORT_KEYS - {'include_raw_data', 'keep_history'}:
+    for key in REPORT_KEYS - {'include_raw_data', 'keep_history', 'history_keep'}:
         if key in report and not isinstance(report[key], str):
             raise ReportError(f"[report] {key} в '{path}' должен быть строкой.")
     if 'include_raw_data' in report:
@@ -110,6 +113,11 @@ def load_config(path):
         if not isinstance(report['keep_history'], bool):
             raise ReportError(f"[report] keep_history в '{path}' должен быть true или false.")
         cfg.keep_history = report['keep_history']
+    if 'history_keep' in report:
+        value = report['history_keep']
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ReportError(f"[report] history_keep в '{path}' должен быть целым числом от 1.")
+        cfg.history_keep = value
     cfg.timezone = report.get('timezone')
     cfg.steps = report.get('steps')
     cfg.output_dir = report.get('output_dir')

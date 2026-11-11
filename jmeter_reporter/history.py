@@ -7,10 +7,12 @@ Layout next to the report:
 """
 import json
 import os
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
 
+DEFAULT_KEEP = 30  # archived copies kept per kind of file; older ones are deleted
 HISTORY_DIR = 'history'
 JOURNAL_NAME = 'journal.jsonl'
 
@@ -48,7 +50,33 @@ def archive_existing(output, extra_files=(), copy_output=False):
     return moved
 
 
-def record(output, jtl, info, extras=None, archived=()):
+def prune(output, keep=DEFAULT_KEEP):
+    """Delete the oldest archived copies beyond `keep` for each kind (report, _compare, html, csv).
+    Never raises. Returns the deleted paths."""
+    folder = history_dir(output)
+    stem = re.escape(Path(output).stem)
+    pattern = re.compile(rf'^{stem}(_compare)?_\d{{8}}_\d{{6}}(_\d+)?(\.[A-Za-z]+)$')
+    groups = {}
+    try:
+        for path in folder.iterdir():
+            match = pattern.match(path.name)
+            if match and path.is_file():
+                groups.setdefault((match.group(1), match.group(3)), []).append(path)
+    except OSError:
+        return []
+    deleted = []
+    for files in groups.values():
+        files.sort(key=lambda p: (p.stat().st_mtime, p.name), reverse=True)
+        for old in files[keep:]:
+            try:
+                old.unlink()
+                deleted.append(old)
+            except OSError:
+                pass
+    return deleted
+
+
+def record(output, jtl, info, extras=None, archived=(), keep=DEFAULT_KEEP):
     """Append one run to the journal. Never raises: history must not break a report."""
     verdict = (extras or {}).get('verdict')
     comparison = (extras or {}).get('comparison')
@@ -65,6 +93,7 @@ def record(output, jtl, info, extras=None, archived=()):
         'regressions': None if comparison is None else comparison.count('regression'),
         'archived': [p.name for p in archived],
     }
+    prune(output, keep)
     try:
         folder = history_dir(output)
         folder.mkdir(parents=True, exist_ok=True)

@@ -3,6 +3,33 @@
 Format: [Keep a Changelog](https://keepachangelog.com/), versioning: [SemVer](https://semver.org/).
 The Excel report is covered by a golden test: it does not change between versions unless noted here.
 
+## [2.0.1] - 2026-11-12
+
+### Security
+- SLA verdict: new `[sla]` keys `required_steps` (regexes that must each match a step in the
+  run) and `min_samples`. A test that died after one request no longer passes: a missing
+  required step or too few samples is FAIL.
+- `compare --fail-on-regression` treats a step that vanished from the new run as a regression.
+- Negative or absurd `timeStamp`/`elapsed` (and digits like `²`, 5000-digit numbers) are a
+  clean input error (exit code 2), not a wrong average or a traceback. One definition of an
+  integer (`jtl.is_int`/`to_int`, ASCII, up to 18 digits).
+- A JTL column named like a formula (`=HYPERLINK(...)`) stays text in the raw sheet header.
+- Control characters in labels (ESC sequences) are replaced in console output (SLA verdict,
+  comparison, XML cross-check); labels in the TUI preview are plain text, not Rich markup.
+- XML with `<!DOCTYPE`/`<!ENTITY` is refused before parsing.
+- Limits: 10 000 unique labels (a label with an id inside used to take gigabytes), 16 MB per
+  field (was 2 GB), 16 384 columns.
+- HTML and CSV exports are written through a temporary file and `os.replace`: a symlink at
+  the target is replaced, not followed.
+- `openpyxl` is limited to `<3.2` (the raw sheet depends on its XML).
+
+### Added
+- `LICENSE` (MIT) and `SECURITY.md` (reporting, threat model, what lands in the report).
+- `history_keep` (default 30): old copies in `history/` are pruned.
+- `convert.py --strict-verify`: exit code 1 when the XML cross-check does not match.
+- CI: Python 3.11, a Windows job (informational), `pip-audit` on the lock file.
+- Release: `SHA256SUMS` as a separate asset and a build provenance attestation.
+
 ## [2.0.0] - 2026-11-05
 
 ### Breaking

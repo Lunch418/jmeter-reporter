@@ -101,7 +101,7 @@ def render_summary(info, accent='#d97757', dim='#8b8b8b', ok='#6fbf73', err='#e0
     for s in info['rows_table']:
         bar = '#' * max(1, round(s['avg'] / peak * BAR_WIDTH)) if s['avg'] else ''
         err_style = err if s['error_pct'] else dim
-        table.add_row(s['label'], str(s['samples']), str(s['avg']), str(s['p90']),
+        table.add_row(Text(s['label']), str(s['samples']), str(s['avg']), str(s['p90']),
                       Text(f"{s['error_pct']:.1f}", style=err_style), Text(bar, style=accent))
 
     parts = [head, Text(''), facts, Text(''), table]

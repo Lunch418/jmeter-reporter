@@ -43,8 +43,12 @@ def _number(text):
 def parse_standard_results(path, error_cls=ValueError):
     """label -> {stats key: number} from standardResults.xml."""
     try:
-        root = ET.parse(path).getroot()
-    except (ET.ParseError, OSError) as exc:
+        with open(path, 'rb') as handle:
+            data = handle.read()
+        if b'<!DOCTYPE' in data[:4096].upper() or b'<!ENTITY' in data.upper():
+            raise ValueError('DTD и сущности в XML не поддерживаются')
+        root = ET.fromstring(data)
+    except (ET.ParseError, OSError, ValueError) as exc:
         raise error_cls(f"Не удалось прочитать '{path}' как XML: {exc}")
     result = {}
     for api in root.iter('api'):

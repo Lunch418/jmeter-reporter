@@ -1,4 +1,4 @@
 # Source of requirements.lock (Docker image): pip-compile --generate-hashes requirements.in -o requirements.lock
 textual>=0.86
-openpyxl>=3.0.10
+openpyxl>=3.0.10,<3.2
 tzdata

@@ -14,6 +14,9 @@ from .errors import ReportError
 # Шаги сценария по умолчанию: 'NN. Название'.
 DEFAULT_STEP_PATTERN = r'^\d{2}\.'
 
+# Метки с id внутри ('GET /order/123') дают сотни тысяч уникальных меток и гигабайты памяти.
+MAX_LABELS = 10_000
+
 
 class Run:
     """Aggregates of one test run: per label and total."""
@@ -155,6 +158,11 @@ def load_run(path, limit=None):
             has_success = 'success' in row
         acc = per_label.get(row['label'])
         if acc is None:
+            if len(per_label) >= MAX_LABELS:
+                raise ReportError(
+                    f"В '{path}' больше {MAX_LABELS} уникальных меток (строка {rows + 2}). "
+                    f"Вероятно, в метке есть id или время: настройте имена семплеров в JMeter "
+                    f"или сгруппируйте их регулярным выражением.")
             acc = per_label[row['label']] = _new_acc()
         _feed(acc, int(row['elapsed']), int(row['timeStamp']),
               str(row.get('success', '')).strip().upper() == 'TRUE',

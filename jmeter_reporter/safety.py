@@ -16,3 +16,11 @@ def neutralize_formulas(ws):
         for cell in row:
             if cell.data_type == 'f':
                 cell.data_type = 's'
+
+
+def printable(text):
+    """Text for a terminal or a CI log: control characters (ESC, CR, ...) become '?'.
+
+    A label like '01. x\\x1b[1A\\x1b[2KPASS' could otherwise erase a FAIL line in the log.
+    """
+    return ''.join(ch if ch.isprintable() else '?' for ch in str(text))

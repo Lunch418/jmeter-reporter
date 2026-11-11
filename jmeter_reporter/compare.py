@@ -1,6 +1,6 @@
 """Comparison of two runs: what got better or worse between a baseline and a new run."""
 from .errors import ReportError
-from .safety import csv_safe, neutralize_formulas
+from .safety import csv_safe, neutralize_formulas, printable
 from .stats import DEFAULT_STEP_PATTERN
 
 DEFAULT_TOLERANCE_PCT = 10.0
@@ -53,7 +53,8 @@ class Comparison:
 
     @property
     def has_regressions(self):
-        return bool(self.regressions)
+        # A step that vanished from the new run is the worst regression, not a footnote.
+        return bool(self.regressions) or bool(self.only_base)
 
 
 def compare_runs(base, new, step_pattern=DEFAULT_STEP_PATTERN,
@@ -125,7 +126,7 @@ def format_comparison(cmp):
              f"лучше {cmp.count('improvement')}, без изменений {cmp.count('same')}"]
     for row in cmp.rows:
         if row['status'] == 'regression':
-            lines.append(f"  хуже: {row['label'][:46]}: avg {row['avg_base']} -> "
+            lines.append(f"  хуже: {printable(row['label'][:46])}: avg {row['avg_base']} -> "
                          f"{row['avg_new']} ({format_delta(row['avg_delta'])}), p90 "
                          f"{row['p90_base']} -> {row['p90_new']} "
                          f"({format_delta(row['p90_delta'])})"
@@ -134,7 +135,9 @@ def format_comparison(cmp):
     if cmp.only_new:
         lines.append(f"  только в новом прогоне: {len(cmp.only_new)} меток")
     if cmp.only_base:
-        lines.append(f"  только в базовом прогоне: {len(cmp.only_base)} меток")
+        lines.append(f"  ПРОПАЛИ в новом прогоне (считается ухудшением): "
+                     f"{len(cmp.only_base)} меток: "
+                     + ", ".join(printable(x[:30]) for x in cmp.only_base[:5]))
     return '\n'.join(lines)
 
 

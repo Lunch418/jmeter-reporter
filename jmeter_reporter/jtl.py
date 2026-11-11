@@ -6,22 +6,31 @@ import re
 from .errors import ReportError
 
 
-def to_int(value, default=0):
-    """int() устойчивый к пустым и нечисловым ячейкам JTL.
+_INT = re.compile(r'\s*(-?[0-9]{1,18})\s*', re.ASCII)
+_UINT = re.compile(r'\s*([0-9]{1,18})\s*', re.ASCII)
 
-    dict.get(key, 0) здесь не спасает: в JTL колонка часто присутствует,
-    но пустая, и .get вернёт '' - int('') падает с ValueError.
+
+def is_int(value):
+    """True for an ASCII decimal integer of up to 18 digits (the one definition of 'a number')."""
+    return _INT.fullmatch(str(value)) is not None
+
+
+def to_int(value, default=0):
+    """int() устойчивый к пустым и нечисловым ячейкам (используется для необязательных
+    колонок вроде bytes). Обязательные timeStamp/elapsed проверяет _checked: ошибка, не ноль.
+
+    Только ASCII-цифры и до 18 знаков: '²', '--5' и число из 5000 цифр дают default,
+    а не исключение.
     """
-    try:
-        return int(str(value).strip())
-    except (TypeError, ValueError):
-        return default
+    match = _INT.fullmatch(str(value)) if value is not None else None
+    return int(match.group(1)) if match else default
 
 
 # Кодировка JTL. JMeter пишет UTF-8; JTL с Windows-агента бывает в cp1251:
 # JTL_ENCODING=cp1251 python convert.py ...  Молчаливой подмены символов нет.
 JTL_ENCODING = os.environ.get('JTL_ENCODING', 'utf-8-sig')
-MAX_FIELD = 2 ** 31 - 1
+MAX_FIELD = 2 ** 24  # 16 MB: one unclosed quote must not swallow the whole file in memory
+MAX_COLUMNS = 16384  # Excel's column limit
 NUMERIC_REQUIRED = ('timeStamp', 'elapsed')
 def iter_jtl_rows(jtl_file, limit=None, warnings=None):
     """Построчное чтение JTL (CSV): память не растет с размером файла.
@@ -59,6 +68,8 @@ def _read_rows(jtl_file, limit, warnings):
                 f"и перезапустите тест."
             )
         reader = csv.DictReader(f)
+        if len(reader.fieldnames or ()) > MAX_COLUMNS:
+            raise ReportError(f"В '{jtl_file}' больше {MAX_COLUMNS} колонок: это не JTL.")
         pending = None
         for index, row in enumerate(reader):
             if pending is not None:
@@ -80,14 +91,14 @@ def _checked(pending, jtl_file):
     if None in row or None in row.values():
         raise ReportError(f"{jtl_file}, строка {line}: неверное число полей в строке JTL.")
     for field in NUMERIC_REQUIRED:
-        if field in row and not re.fullmatch(r'\s*-?\d+\s*', row[field] or ''):
+        if field in row and not _UINT.fullmatch(row[field] or ''):
             hint = ''
             if field == 'timeStamp':
                 hint = ("\nВероятно, jmeter.save.saveservice.timestamp_format задан не как ms: "
                         "выставьте timestamp_format=ms (по умолчанию) и перезапустите тест.")
             raise ReportError(
-                f"{jtl_file}, строка {line}: в колонке {field} не целое число: "
-                f"'{row[field]}'.{hint}")
+                f"{jtl_file}, строка {line}: в колонке {field} не целое неотрицательное число: "
+                f"'{row[field][:40]}'.{hint}")
     return row
 
 

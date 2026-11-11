@@ -263,6 +263,7 @@ def create_excel_report(jtl_file, output_file, tz=None, step_pattern=DEFAULT_STE
         rows_iter = _jtl.iter_jtl_rows(jtl_file)
         for col, header in enumerate(raw_headers, 1):
             cell = ws3.cell(row=1, column=col, value=header)
+            cell.data_type = 's'  # a header like '=HYPERLINK(...)' must stay text
             cell.font = header_font_white
             cell.fill = header_fill_blue
             cell.border = thin_border
@@ -348,6 +349,7 @@ USAGE = (
     "                 (в четырёхаргументной форме оба файла берутся из позиций)\n"
     "  --no-raw-data  не добавлять лист 'Исходные данные': для очень больших JTL\n"
     "                 (лимит строк Excel, память). Остальные листы те же.\n"
+    "  --strict-verify  код выхода 1, если сверка с XML Jenkins не сошлась.\n"
     "  --raw-data     добавить лист 'Исходные данные' (по умолчанию; перекрывает конфиг).\n"
     "  --version      версия программы.\n"
     "\n"
@@ -369,11 +371,15 @@ VALUE_OPTIONS = ('--tz', '--steps', '--standard', '--dashboard', '--config')
 def parse_args(argv):
     """Разбор командной строки. Возвращает словарь параметров; ошибки - _errors.UsageError/_errors.ReportError."""
     options = {'--tz': None, '--steps': None, '--standard': None, '--dashboard': None,
-               '--config': None, '--raw-data': None}
+               '--config': None, '--raw-data': None, '--strict-verify': False}
     positional = []
     i = 0
     while i < len(argv):
         arg = argv[i]
+        if arg == '--strict-verify':
+            options['--strict-verify'] = True
+            i += 1
+            continue
         if arg in ('--no-raw-data', '--raw-data'):
             options['--raw-data'] = (arg == '--raw-data')
             i += 1
@@ -413,6 +419,7 @@ def parse_args(argv):
         if options['--raw-data'] is None:
             options['--raw-data'] = cfg.include_raw_data
         options['keep_history'] = cfg.keep_history
+        options['history_keep'] = cfg.history_keep
     options['--steps'] = options['--steps'] or DEFAULT_STEP_PATTERN
 
     for path in (jtl_file, options['--standard'], options['--dashboard']):
@@ -424,7 +431,9 @@ def parse_args(argv):
             'steps': options['--steps'], 'standard': options['--standard'],
             'dashboard': options['--dashboard'],
             'raw_data': True if options['--raw-data'] is None else options['--raw-data'],
-            'keep_history': options.get('keep_history', True)}
+            'keep_history': options.get('keep_history', True),
+            'history_keep': options.get('history_keep', 30),
+            'strict_verify': options['--strict-verify']}
 
 
 def main(argv=None):
@@ -463,7 +472,8 @@ def main(argv=None):
     for warning in info['warnings']:
         print(f"Внимание: {warning}", file=sys.stderr)
     if args['keep_history']:
-        history.record(args['output'], args['jtl'], info, None, info['archived'])
+        history.record(args['output'], args['jtl'], info, None, info['archived'],
+                       args['history_keep'])
         for path in info['archived']:
             print(f"Прошлая версия сохранена: {path}")
     print(f"Файл '{info['output']}' успешно создан!")
@@ -475,10 +485,13 @@ def main(argv=None):
         print(f"   Сверка с XML: {'расхождений нет' if v['ok'] else str(v['mismatches']) + ' расхождений'}"
               f" (проверено {v['checked']})")
         for row in v['details'][:10]:
-            print(f"      {row['label']} / {row['metric']} ({row['source']}): "
+            print(f"      {_safety.printable(row['label'])} / {row['metric']} ({row['source']}): "
                   f"в XML {row['expected']}, по JTL {row['actual']}")
         if len(v['details']) > 10:
             print(f"      ... и еще {len(v['details']) - 10}")
+    if args['strict_verify'] and info['verification'] and not info['verification']['ok']:
+        print('Сверка с XML не сошлась (--strict-verify): код выхода 1.', file=sys.stderr)
+        return 1
     return 0
 
 

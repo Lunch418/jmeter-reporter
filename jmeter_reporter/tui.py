@@ -605,7 +605,8 @@ class ReportApp(App):
             except ReportError as exc:
                 info['extras_error'] = str(exc)
             if keep:
-                history.record(output, jtl, info, info['extras'], info['archived'])
+                history.record(output, jtl, info, info['extras'], info['archived'],
+                               self.cfg.history_keep if self.cfg else 30)
         except ReportError as exc:
             self.call_from_thread(self._build_failed, str(exc))
         except Exception as exc:  # an unexpected error must not kill the UI

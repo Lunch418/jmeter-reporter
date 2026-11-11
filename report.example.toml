@@ -6,6 +6,7 @@ timezone = "Europe/Moscow"      # local | UTC | Europe/Moscow | +05:00
 steps = '^\d{2}\.'              # labels like "01. Login" are steps
 # output_dir = "reports"        # where reports go when no path is given
 # keep_history = true           # false: overwrite the old report, no history/ folder
+# history_keep = 30             # copies kept in history/ (the oldest are deleted)
 
 [compare]
 tolerance_pct = 10              # avg / p90 change above this is a regression
@@ -18,6 +19,8 @@ formats = ["html"]              # extra files next to the Excel report: html, cs
 [sla]                           # limits for every step; units: ms, percent, requests/sec
 p90_ms = 2000
 error_pct = 1.0
+# min_samples = 5                # a step with fewer samples fails
+# required_steps = ['^01\.']     # every regex must match a step in the run, or FAIL
 
 [sla.total]                     # limits for the TOTAL row
 error_pct = 2.0

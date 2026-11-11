@@ -16,6 +16,7 @@ import openpyxl
 from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.utils import get_column_letter
 
+from . import jtl
 from .errors import ReportError
 
 MAX_CELL_CHARS = 32767  # Excel limit
@@ -90,8 +91,8 @@ def fill_sheet(src, dst, sheet_index, rows, style, numeric_columns, headers, tot
                     values = []
                     for header in headers:
                         value = row.get(header, '')
-                        if header in numeric_columns and str(value).strip().lstrip('-').isdigit():
-                            value = int(value)
+                        if header in numeric_columns and jtl.is_int(value):
+                            value = jtl.to_int(value)
                         values.append(value)
                     chunk.append(row_xml(written + 2, values, style, letters, cut))
                     written += 1

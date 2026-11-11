@@ -2,6 +2,8 @@
 import csv
 import html
 import os
+import tempfile
+from contextlib import contextmanager
 
 from .errors import ReportError
 from .safety import csv_safe
@@ -18,10 +20,31 @@ def _rows(run, step_pattern=None):
     return [run.labels[label] for label in labels] + [run.total]
 
 
+@contextmanager
+def atomic_text(path, encoding, newline=None):
+    """Write to a unique temp file next to `path`, then os.replace: a symlink at `path` is
+    replaced, not followed, and a failed export keeps the previous file."""
+    directory = os.path.dirname(os.path.abspath(str(path)))
+    fd, tmp = tempfile.mkstemp(prefix='.export-', suffix='.tmp', dir=directory)
+    try:
+        with os.fdopen(fd, 'w', encoding=encoding, newline=newline) as handle:
+            yield handle
+        mask = os.umask(0)
+        os.umask(mask)
+        os.chmod(tmp, 0o666 & ~mask)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def write_csv(run, path, step_pattern=None):
     """Summary table, one row per label plus TOTAL. UTF-8 with BOM so Excel opens it right."""
     try:
-        with open(path, 'w', encoding='utf-8-sig', newline='') as f:
+        with atomic_text(path, 'utf-8-sig', '') as f:
             writer = csv.writer(f)
             writer.writerow(CSV_HEADERS)
             for stats in _rows(run, step_pattern):
@@ -120,7 +143,7 @@ def render_html(run, tz=None, step_pattern=None, verdict=None, title='Отчет
 def write_html(run, path, tz=None, step_pattern=None, verdict=None):
     page = render_html(run, tz, step_pattern, verdict)
     try:
-        with open(path, 'w', encoding='utf-8') as f:
+        with atomic_text(path, 'utf-8') as f:
             f.write(page)
     except OSError as exc:
         raise ReportError(f"Не удалось сохранить '{path}': {exc}")

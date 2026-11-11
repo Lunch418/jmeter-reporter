@@ -2,6 +2,7 @@
 import re
 
 from .errors import ReportError
+from .safety import printable
 from .stats import DEFAULT_STEP_PATTERN
 
 # limit name -> (key in stats, kind). 'max' = the value must not exceed the limit,
@@ -15,6 +16,7 @@ LIMITS = {
     'max_ms': ('max', 'max'),
     'error_pct': ('error_pct', 'max'),
     'min_throughput': ('throughput', 'min'),
+    'min_samples': ('samples', 'min'),
 }
 SCOPES = ('steps', 'all')
 
@@ -39,6 +41,14 @@ def normalize(raw, path='report.toml'):
     scope = raw.pop('scope', 'steps')
     if scope not in SCOPES:
         raise ReportError(f"sla.scope в '{path}': допустимо {', '.join(SCOPES)}.")
+    required = raw.pop('required_steps', [])
+    if not isinstance(required, list) or any(not isinstance(x, str) or not x for x in required):
+        raise ReportError(f"sla.required_steps в '{path}' должен быть списком непустых строк.")
+    for pattern in required:
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            raise ReportError(f"sla.required_steps в '{path}': некорректное выражение '{pattern}': {exc}")
     total_raw = raw.pop('total', {})
     steps_raw = raw.pop('step', [])
     if not isinstance(total_raw, dict):
@@ -65,8 +75,9 @@ def normalize(raw, path='report.toml'):
     sla = {'scope': scope,
            'defaults': _limits(raw, 'sla', path),
            'total': _limits(total_raw, 'sla.total', path),
-           'overrides': overrides}
-    if not sla['defaults'] and not sla['total'] and not overrides:
+           'overrides': overrides,
+           'required': required}
+    if not sla['defaults'] and not sla['total'] and not overrides and not required:
         raise ReportError(f"[sla] в '{path}': не задано ни одного ограничения.")
     return sla
 
@@ -118,6 +129,11 @@ def evaluate(run, sla, step_pattern=DEFAULT_STEP_PATTERN):
                 limits.update(override['limits'])
         if limits:
             _check(label, stats, limits, rows)
+    for pattern in sla.get('required', ()):
+        regex = re.compile(pattern)
+        found = sum(1 for label in run.labels if regex.match(label))
+        rows.append({'label': pattern, 'limit': 'required_step', 'bound': 1.0, 'kind': 'min',
+                     'actual': found, 'ok': found >= 1})
     if sla['total']:
         _check('TOTAL', run.total, sla['total'], rows)
     if not rows:
@@ -136,7 +152,7 @@ def format_verdict(verdict, width=100):
         actual = f"{row['actual']:.2f}".rstrip('0').rstrip('.') if isinstance(
             row['actual'], float) else str(row['actual'])
         bound = f"{row['bound']:g}"
-        lines.append(f"{mark}  {row['label'][:50]:<50}  {row['limit']:<15} "
+        lines.append(f"{mark}  {printable(row['label'][:50]):<50}  {row['limit']:<15} "
                      f"{actual} {sign} {bound}")
     status = 'PASS' if verdict.passed else 'FAIL'
     lines.append(f"{status}: проверено {verdict.checked}, нарушений {len(verdict.failed)}")
